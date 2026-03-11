@@ -1,0 +1,46 @@
+:root {
+  --bg:            #080d18;
+  --surface:       #0d1929;
+  --surface-raised:#122035;
+  --border:        rgba(255,255,255,0.08);
+  --text:          #e2e8f0;
+  --text-muted:    #6b7fa0;
+  --accent:        #00d4ff;
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  color: var(--text);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--surface-raised); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,212,255,0.35); }
+
+/* Leaflet overrides */
+.leaflet-container {
+  background: #090f1e !important;
+  font-family: inherit;
+}
+.leaflet-tile-pane { filter: brightness(0.85) saturate(0.75); }
+.leaflet-bar a { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border) !important; }
+
+/* Range input */
+input[type=range] { width: 100%; cursor: pointer; }
+input[type=number], input[type=text] { outline: none; }
+input[type=number]:focus, input[type=text]:focus { border-color: var(--accent) !important; }
+
+/* Recharts overrides */
+.recharts-default-tooltip { border-radius: 6px !important; }

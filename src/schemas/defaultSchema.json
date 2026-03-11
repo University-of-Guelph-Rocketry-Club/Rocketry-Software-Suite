@@ -1,0 +1,60 @@
+{
+  "version": "1.0",
+  "missionName": "UoG Rocketry — Default Mission",
+  "sources": [
+    {
+      "id": "rocket",
+      "name": "Main Rocket",
+      "wsUrl": "ws://localhost:8080",
+      "color": "#00d4ff",
+      "reconnectMs": 3000,
+      "enabled": true
+    },
+    {
+      "id": "payload",
+      "name": "Payload Bay",
+      "wsUrl": "ws://localhost:8081",
+      "color": "#ff9944",
+      "reconnectMs": 3000,
+      "enabled": false
+    },
+    {
+      "id": "ground",
+      "name": "Ground Station",
+      "wsUrl": "ws://localhost:8082",
+      "color": "#44ff88",
+      "reconnectMs": 3000,
+      "enabled": false
+    }
+  ],
+  "sensors": [
+    { "key": "pitch",        "label": "Pitch",         "unit": "°",    "min": -180, "max": 180,  "chart": true,  "chartColor": "#ff4444", "format": "decimal", "decimalPlaces": 1 },
+    { "key": "yaw",          "label": "Yaw",           "unit": "°",    "min": -180, "max": 180,  "chart": true,  "chartColor": "#ff9944", "format": "decimal", "decimalPlaces": 1 },
+    { "key": "roll",         "label": "Roll",          "unit": "°",    "min": -180, "max": 180,  "chart": true,  "chartColor": "#ffdd44", "format": "decimal", "decimalPlaces": 1 },
+    { "key": "accelX",       "label": "Accel X",       "unit": "m/s²", "min": -50,  "max": 50,   "chart": true,  "chartColor": "#44ff88", "format": "decimal", "decimalPlaces": 2 },
+    { "key": "accelY",       "label": "Accel Y",       "unit": "m/s²", "min": -50,  "max": 50,   "chart": true,  "chartColor": "#44ddff", "format": "decimal", "decimalPlaces": 2 },
+    { "key": "accelZ",       "label": "Accel Z",       "unit": "m/s²", "min": -50,  "max": 50,   "chart": true,  "chartColor": "#4488ff", "format": "decimal", "decimalPlaces": 2 },
+    { "key": "altitude",     "label": "GPS Altitude",  "unit": "m",    "min": 0,    "max": 30000,"chart": true,  "chartColor": "#cc44ff", "format": "decimal", "decimalPlaces": 1 },
+    { "key": "baroAltitude", "label": "Baro Altitude", "unit": "m",    "min": 0,    "max": 30000,"chart": true,  "chartColor": "#ff44cc", "format": "decimal", "decimalPlaces": 1 },
+    { "key": "pressure",     "label": "Pressure",      "unit": "hPa",  "min": 200,  "max": 1013, "chart": true,  "chartColor": "#88ff44", "format": "decimal", "decimalPlaces": 1 },
+    { "key": "temperature",  "label": "Temperature",   "unit": "°C",   "min": -60,  "max": 80,   "chart": true,  "chartColor": "#ff6644", "format": "decimal", "decimalPlaces": 1, "critical": true, "criticalMin": -40, "criticalMax": 70 },
+    { "key": "batteryVoltage","label": "Battery",      "unit": "V",    "min": 2.8,  "max": 4.2,  "chart": true,  "chartColor": "#ffff44", "format": "decimal", "decimalPlaces": 2, "critical": true, "criticalMin": 3.2 },
+    { "key": "rssi",         "label": "RSSI",          "unit": "dBm",  "min": -120, "max": 0,    "chart": true,  "chartColor": "#ff4488", "format": "integer", "critical": true, "criticalMin": -100 },
+    { "key": "latitude",     "label": "Latitude",      "unit": "°",    "chart": false, "format": "decimal", "decimalPlaces": 6, "mapOverlay": true },
+    { "key": "longitude",    "label": "Longitude",     "unit": "°",    "chart": false, "format": "decimal", "decimalPlaces": 6, "mapOverlay": true },
+    { "key": "gpsFix",       "label": "GPS Fix",       "chart": false, "format": "boolean" },
+    { "key": "gpsSatellites","label": "GPS Sats",      "chart": false, "format": "integer" }
+  ],
+  "checklistItems": [
+    { "id": "gps_fix",      "category": "Navigation", "label": "GPS Fix Acquired (≥ 6 satellites)", "required": true,  "autoField": "gpsFix",        "passCriteria": "gpsFix === true" },
+    { "id": "battery",      "category": "Power",      "label": "Battery Voltage ≥ 3.7 V",           "required": true,  "autoField": "batteryVoltage", "passCriteria": "batteryVoltage >= 3.7" },
+    { "id": "imu_cal",      "category": "Sensors",    "label": "IMU Calibrated (Gravity ≈ 9.8 m/s²)","required": true, "autoField": "accelZ",        "passCriteria": "Math.abs(accelZ - 9.81) < 0.3" },
+    { "id": "comm",         "category": "Comms",      "label": "Communication Link Established",     "required": true,  "autoField": "rssi",          "passCriteria": "rssi > -100" },
+    { "id": "recovery",     "category": "Recovery",   "label": "Recovery System Armed & Tested",     "required": true },
+    { "id": "tower",        "category": "Range",      "label": "Launch Tower Clear",                 "required": true },
+    { "id": "rso",          "category": "Range",      "label": "Range Safety Officer Approval",      "required": true },
+    { "id": "weather",      "category": "Weather",    "label": "Weather Check Completed",            "required": true },
+    { "id": "spectators",   "category": "Safety",     "label": "Spectators at Safe Distance",        "required": true },
+    { "id": "data_logging", "category": "Data",       "label": "Data Logging Active",                "required": false }
+  ]
+}
