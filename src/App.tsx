@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTelemetryStore } from './store/telemetryStore'
 import { useMissionStore } from './store/missionStore'
 import { useDemoSimulator } from './hooks/useWebSocket'
+import { useHardwareEvents } from './hooks/useHardwareEvents'
 import { Sidebar } from './components/Layout/Sidebar'
 import { StatusBar } from './components/Layout/StatusBar'
 import { RocketView3D } from './components/RocketView3D'
@@ -12,6 +13,7 @@ import { ReplayMode } from './components/ReplayMode'
 import { MissionControl } from './components/MissionControl'
 import { ForecastingModule } from './components/ForecastingModule'
 import { FloatTracker } from './components/FloatTracker'
+import HardwareConfig from './components/HardwareConfig'
 
 function Dashboard() {
   const schema = useTelemetryStore(s => s.schema)
@@ -54,8 +56,11 @@ export default function App() {
     initChecklist(schema)
   }, [schema, initChecklist])
 
-  // Demo simulator — active by default; disable when real WebSocket connects
+  // Demo simulator — active by default; disable when real hardware connects
   useDemoSimulator('rocket', 10)
+
+  // Subscribe to Tauri serial bridge events (no-op in web-only mode)
+  useHardwareEvents()
 
   const renderView = () => {
     switch (activeView) {
@@ -68,6 +73,7 @@ export default function App() {
       case 'float':        return <FloatTracker />
       case 'replay':       return <ReplayMode />
       case 'mission':      return <MissionControl />
+      case 'hardware':     return <HardwareConfig />
       default:             return <Dashboard />
     }
   }

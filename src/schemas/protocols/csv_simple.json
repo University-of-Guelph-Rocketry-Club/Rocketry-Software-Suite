@@ -1,0 +1,23 @@
+{
+  "name": "Simple CSV (Arduino Serial.print)",
+  "description": "Comma-separated values, newline-terminated. Common for Arduino firmware.\nArduino code: Serial.printf(\"%lu,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.1f,%.6f,%.6f,%.1f,%.2f,%.1f\\n\", millis(), pitch, yaw, roll, ax, ay, az, alt, lat, lon, pressure, batt, temp);",
+  "type": "csv",
+  "delimiter": ",",
+  "hasHeader": false,
+  "sourceId": "rocket",
+  "csvFields": [
+    "ts",
+    "pitch",
+    "yaw",
+    "roll",
+    "accelX",
+    "accelY",
+    "accelZ",
+    "altitude",
+    "latitude",
+    "longitude",
+    "pressure",
+    "batteryVoltage",
+    "temperature"
+  ]
+}

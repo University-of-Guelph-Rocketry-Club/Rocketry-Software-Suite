@@ -1,0 +1,7 @@
+{
+  "name": "JSON over Serial",
+  "description": "Newline-delimited JSON. Easiest to implement in any language.\nFirmware example: printf(\"{\\\"seq\\\":%d,\\\"ts\\\":%d,\\\"pitch\\\":%.2f,\\\"alt\\\":%.1f}\\n\", seq++, millis(), pitch, altitude);",
+  "type": "json",
+  "sourceId": "rocket",
+  "fields": []
+}

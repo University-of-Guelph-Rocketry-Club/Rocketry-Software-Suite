@@ -16,6 +16,7 @@ const VIEWS = [
   { id: 'float',        icon: '🎈', label: 'HAB Tracker'   },
   { id: 'replay',       icon: '▶️', label: 'Replay'        },
   { id: 'mission',      icon: '✅', label: 'Mission Ctrl'  },
+  { id: 'hardware',     icon: '🔌', label: 'Hardware'      },
 ]
 
 export function Sidebar({ activeView, onViewChange }: SidebarProps) {
