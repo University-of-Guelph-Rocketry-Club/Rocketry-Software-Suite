@@ -1,14 +1,60 @@
+/* ────────────────────────────────────────────────────────────────
+   ROCKETRY SUITE — Professional Aerospace Operations Theme
+   ──────────────────────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@300;400;500;600;700&display=swap');
+
 :root {
-  --bg:            #080d18;
-  --surface:       #0d1929;
-  --surface-raised:#122035;
-  --border:        rgba(255,255,255,0.08);
-  --text:          #e2e8f0;
-  --text-muted:    #6b7fa0;
-  --accent:        #00d4ff;
+  /* ── Backgrounds ── */
+  --bg:              #04090f;
+  --bg-deep:         #020508;
+  --surface:         #080f1a;
+  --surface-2:       #0c1525;
+  --surface-3:       #111d34;
+  --surface-4:       #172032;
+
+  /* ── Borders ── */
+  --border:          rgba(148, 163, 184, 0.07);
+  --border-bright:   rgba(148, 163, 184, 0.13);
+  --border-accent:   rgba(56, 189, 248, 0.28);
+
+  /* ── Primary Accent — Sky Blue ── */
+  --accent:          #38bdf8;
+  --accent-dim:      rgba(56, 189, 248, 0.1);
+  --accent-glow:     0 0 18px rgba(56, 189, 248, 0.25);
+  --accent-border:   rgba(56, 189, 248, 0.3);
+
+  /* ── Status ── */
+  --green:           #34d399;
+  --green-dim:       rgba(52, 211, 153, 0.1);
+  --green-glow:      0 0 12px rgba(52, 211, 153, 0.35);
+  --yellow:          #fbbf24;
+  --yellow-dim:      rgba(251, 191, 36, 0.1);
+  --red:             #f87171;
+  --red-dim:         rgba(248, 113, 113, 0.1);
+  --red-glow:        0 0 16px rgba(248, 113, 113, 0.4);
+
+  /* ── ML / AI — Violet ── */
+  --ml:              #a78bfa;
+  --ml-dim:          rgba(167, 139, 250, 0.1);
+  --ml-glow:         0 0 18px rgba(167, 139, 250, 0.3);
+  --ml-border:       rgba(167, 139, 250, 0.28);
+
+  /* ── Text ── */
+  --text:            #d8e4ef;
+  --text-muted:      #4e6278;
+  --text-dim:        #2f3f52;
+
+  /* ── Monospace font ── */
+  --mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+  /* ── Deprecated aliases (kept for component compat) ── */
+  --surface-raised:  var(--surface-3);
+
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text);
+  -webkit-font-smoothing: antialiased;
 }
 
 *, *::before, *::after {
@@ -23,24 +69,184 @@ html, body, #root {
   background: var(--bg);
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--surface); }
-::-webkit-scrollbar-thumb { background: var(--surface-raised); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(0,212,255,0.35); }
+/* ── Animations ─────────────────────────────────────────────── */
 
-/* Leaflet overrides */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.75); }
+}
+@keyframes pulse-ring {
+  0%   { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+@keyframes scan-line {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(300%); opacity: 0; }
+}
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes alert-flash {
+  0%, 100% { background: transparent; }
+  50%       { background: rgba(248, 113, 113, 0.08); }
+}
+@keyframes ml-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Scrollbars ───────────────────────────────────────────────── */
+::-webkit-scrollbar          { width: 5px; height: 5px; }
+::-webkit-scrollbar-track    { background: transparent; }
+::-webkit-scrollbar-thumb    { background: rgba(148,163,184,0.12); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(56,189,248,0.3); }
+
+/* ── Panel baseline ──────────────────────────────────────────── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.panel-header .panel-title {
+  color: var(--text);
+}
+
+/* ── Stat card ───────────────────────────────────────────────── */
+.stat-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.stat-card .stat-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.stat-card .stat-value {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1;
+}
+.stat-card .stat-unit {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 3px;
+}
+
+/* ── Badge ───────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.badge-green  { background: var(--green-dim);  color: var(--green); border: 1px solid rgba(52,211,153,0.2); }
+.badge-yellow { background: var(--yellow-dim); color: var(--yellow);border: 1px solid rgba(251,191,36,0.2); }
+.badge-red    { background: var(--red-dim);    color: var(--red);   border: 1px solid rgba(248,113,113,0.2); }
+.badge-accent { background: var(--accent-dim); color: var(--accent);border: 1px solid rgba(56,189,248,0.2); }
+.badge-ml     { background: var(--ml-dim);     color: var(--ml);    border: 1px solid rgba(167,139,250,0.2); }
+
+/* ── Status dot ─────────────────────────────────────────────── */
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  position: relative;
+}
+.status-dot.live::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  animation: pulse-ring 1.8s ease-out infinite;
+}
+
+/* ── Progress bar ────────────────────────────────────────────── */
+.progress-track {
+  height: 4px;
+  background: var(--surface-3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+/* ── Tooltip ─────────────────────────────────────────────────── */
+.recharts-default-tooltip {
+  border-radius: 8px !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+/* ── Leaflet overrides ───────────────────────────────────────── */
 .leaflet-container {
-  background: #090f1e !important;
+  background: #060c16 !important;
   font-family: inherit;
 }
-.leaflet-tile-pane { filter: brightness(0.85) saturate(0.75); }
-.leaflet-bar a { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border) !important; }
+.leaflet-tile-pane { filter: brightness(0.8) saturate(0.65) hue-rotate(10deg); }
+.leaflet-bar a {
+  background: var(--surface-2) !important;
+  color: var(--text) !important;
+  border-color: var(--border-bright) !important;
+}
+.leaflet-bar a:hover { background: var(--surface-3) !important; }
 
-/* Range input */
-input[type=range] { width: 100%; cursor: pointer; }
-input[type=number], input[type=text] { outline: none; }
-input[type=number]:focus, input[type=text]:focus { border-color: var(--accent) !important; }
+/* ── Form inputs ─────────────────────────────────────────────── */
+input[type=range]  { width: 100%; cursor: pointer; accent-color: var(--accent); }
+input[type=number],
+input[type=text]   { outline: none; transition: border-color 0.15s; }
+input[type=number]:focus,
+input[type=text]:focus { border-color: var(--accent) !important; }
 
-/* Recharts overrides */
-.recharts-default-tooltip { border-radius: 6px !important; }
+/* ── ML inference badge shimmer ──────────────────────────────── */
+.ml-shimmer {
+  background: linear-gradient(90deg,
+    var(--ml-dim) 25%,
+    rgba(167, 139, 250, 0.22) 50%,
+    var(--ml-dim) 75%);
+  background-size: 200% 100%;
+  animation: ml-shimmer 2.5s ease infinite;
+}
+
+/* ── Severity animations ─────────────────────────────────────── */
+.alert-row {
+  animation: fade-in 0.25s ease;
+}
+.alert-row.critical {
+  animation: alert-flash 1s ease infinite, fade-in 0.25s ease;
+}

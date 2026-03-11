@@ -180,24 +180,34 @@ export function useDemoSimulator(sourceId = 'rocket', hz = 10) {
     const interval = setInterval(() => {
       t += 1 / hz
       seq++
+
+      // Occasional simulated anomaly spike every ~20 s
+      const spikeActive = Math.floor(t / 20) % 2 === 1 && Math.sin(t * 3) > 0.97
+
       const altitude = Math.max(0, 1200 * Math.sin(t * 0.15) + Math.random() * 5)
       const packet: TelemetryPacket = {
         seq,
-        ts: Date.now() - Math.floor(Math.random() * 30),  // slight jitter
+        ts: Date.now() - Math.floor(Math.random() * 30),
         rcvTs: Date.now(),
         src: sourceId,
-        pitch: 90 * Math.sin(t * 0.2) + (Math.random() - 0.5) * 2,
+        pitch: 90 * Math.sin(t * 0.2) + (Math.random() - 0.5) * 2 + (spikeActive ? 45 : 0),
         yaw: 45 * Math.sin(t * 0.1) + (Math.random() - 0.5) * 1,
         roll: 20 * Math.cos(t * 0.3) + (Math.random() - 0.5) * 1,
-        accelX: (Math.random() - 0.5) * 4,
+        accelX: (Math.random() - 0.5) * 4 + (spikeActive ? 18 : 0),
         accelY: (Math.random() - 0.5) * 4,
         accelZ: 9.81 + Math.random() * 30 * Math.max(0, Math.sin(t * 0.3)),
+        gyroX: (Math.random() - 0.5) * 10,
+        gyroY: (Math.random() - 0.5) * 10,
+        gyroZ: (Math.random() - 0.5) * 10,
+        velocityX: (Math.random() - 0.5) * 2,
+        velocityY: (Math.random() - 0.5) * 2,
+        velocityZ: 1200 * 0.15 * Math.cos(t * 0.15),
         altitude,
         baroAltitude: altitude + (Math.random() - 0.5) * 10,
         latitude: 43.5448 + (altitude / 111111),
         longitude: -80.2482 + (Math.random() - 0.5) * 0.001,
         pressure: 1013.25 * Math.pow(1 - (altitude * 2.25577e-5), 5.25588),
-        temperature: 15 - altitude * 0.0065,
+        temperature: 15 - altitude * 0.0065 + (spikeActive ? 12 : 0),
         batteryVoltage: 3.85 - (seq * 0.0001),
         rssi: -60 - altitude * 0.02 + (Math.random() - 0.5) * 5,
         gpsFix: true,
