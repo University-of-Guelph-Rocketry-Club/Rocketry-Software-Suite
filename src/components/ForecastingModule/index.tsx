@@ -1,16 +1,34 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap, CircleMarker } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useTelemetryStore } from '../../store/telemetryStore'
 import { NoFlyZones } from '../LiveMap/NoFlyZones'
 import {
-  fetchWindLayers, predictTrajectory, type OpenMeteoWindResponse,
+  fetchWindLayers, predictTrajectory, fetchCurrentConditions,
+  type OpenMeteoWindResponse, type CurrentConditions,
 } from '../../utils/forecasting'
 import type { WindLayer, TrajectoryPoint } from '../../types/telemetry'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
+
+function EnsureMapReady() {
+  const map = useMap()
+
+  useEffect(() => {
+    const kick = () => map.invalidateSize({ pan: false })
+    kick()
+    const timeoutId = window.setTimeout(kick, 120)
+    window.addEventListener('resize', kick)
+    return () => {
+      window.clearTimeout(timeoutId)
+      window.removeEventListener('resize', kick)
+    }
+  }, [map])
+
+  return null
+}
 
 function FitBounds({ points }: { points: Array<[number, number]> }) {
   const map = useMap()
@@ -18,6 +36,103 @@ function FitBounds({ points }: { points: Array<[number, number]> }) {
     map.fitBounds(points)
   }
   return null
+}
+
+// ── Current conditions strip ───────────────────────────────────
+function WeatherStrip({ cond, loading }: { cond: CurrentConditions | null; loading: boolean }) {
+  if (loading) {
+    return (
+      <div style={{
+        padding: '8px 16px', borderBottom: '1px solid var(--border)',
+        display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
+        background: 'rgba(56,189,248,0.03)',
+      }}>
+        <span style={{ fontSize: 9, letterSpacing: '0.1em', color: 'var(--text-dim)', fontFamily: 'var(--mono)' }}>
+          FETCHING WEATHER…
+        </span>
+      </div>
+    )
+  }
+
+  if (!cond) {
+    return (
+      <div style={{
+        padding: '8px 16px', borderBottom: '1px solid var(--border)',
+        display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
+        background: 'rgba(56,189,248,0.03)',
+      }}>
+        <span style={{ fontSize: 9, letterSpacing: '0.1em', color: 'var(--text-dim)', fontFamily: 'var(--mono)' }}>
+          LIVE WEATHER — click &#34;FETCH WIND &amp; PREDICT&#34; to load
+        </span>
+      </div>
+    )
+  }
+
+  const tempColor = cond.temperatureC < -10 ? 'var(--accent)'
+    : cond.temperatureC > 35 ? 'var(--magenta)'
+    : 'var(--text)'
+
+  const windColor = cond.windSpeedMs > 15 ? 'var(--magenta)'
+    : cond.windSpeedMs > 8 ? 'var(--amber)'
+    : 'var(--lime)'
+
+  const visColor = cond.visibilityM !== null && cond.visibilityM < 5000 ? 'var(--amber)'
+    : cond.visibilityM !== null && cond.visibilityM < 1000 ? 'var(--magenta)'
+    : 'var(--lime)'
+
+  const precipColor = cond.precipitationMm > 0 ? 'var(--amber)' : 'var(--lime)'
+  const age = Math.round((Date.now() - cond.fetchedAt) / 60000)
+
+  const cells = [
+    { label: 'CONDITIONS', value: cond.weatherDescription, unit: '', color: 'var(--accent)' },
+    { label: 'TEMP', value: cond.temperatureC.toFixed(1), unit: '°C', color: tempColor },
+    { label: 'HUMIDITY', value: cond.relativeHumidityPct.toFixed(0), unit: '%', color: 'var(--text-muted)' },
+    { label: 'WIND', value: cond.windSpeedMs.toFixed(1), unit: 'm/s', color: windColor },
+    { label: 'DIR', value: `${cond.windDirectionDeg.toFixed(0)}° ${compassBearing(cond.windDirectionDeg)}`, unit: '', color: 'var(--text)' },
+    { label: 'PRESSURE', value: cond.surfacePressureHPa.toFixed(1), unit: 'hPa', color: 'var(--text)' },
+    { label: 'VISIBILITY', value: cond.visibilityM !== null ? (cond.visibilityM / 1000).toFixed(1) : '—', unit: 'km', color: visColor },
+    { label: 'PRECIP', value: cond.precipitationMm.toFixed(1), unit: 'mm', color: precipColor },
+  ]
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 0,
+      borderBottom: '1px solid var(--border)',
+      background: 'rgba(56,189,248,0.03)',
+      flexShrink: 0, overflow: 'hidden',
+    }}>
+      {/* Label */}
+      <div style={{
+        display: 'flex', flexDirection: 'column', justifyContent: 'center',
+        padding: '6px 14px', borderRight: '1px solid var(--border)',
+        flexShrink: 0, gap: 2,
+      }}>
+        <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: 'var(--accent)', textTransform: 'uppercase', fontFamily: 'var(--mono)' }}>
+          LIVE WX
+        </div>
+        <div style={{ fontSize: 8, color: 'var(--text-dim)', fontFamily: 'var(--mono)' }}>
+          {age === 0 ? 'just now' : `${age}m ago`}
+        </div>
+      </div>
+
+      {/* Data cells */}
+      {cells.map(c => (
+        <div key={c.label} style={{
+          display: 'flex', flexDirection: 'column', justifyContent: 'center',
+          padding: '5px 12px', borderRight: '1px solid var(--border)',
+          flexShrink: 0,
+        }}>
+          <div style={{ fontSize: 8, fontWeight: 600, letterSpacing: '0.1em', color: 'var(--text-dim)', textTransform: 'uppercase', fontFamily: 'var(--mono)', marginBottom: 1 }}>
+            {c.label}
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: c.color, fontFamily: 'var(--mono)', whiteSpace: 'nowrap' }}>
+            {c.value}
+            {c.unit && <span style={{ fontSize: 9, fontWeight: 400, color: 'var(--text-muted)', marginLeft: 2 }}>{c.unit}</span>}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 export function ForecastingModule() {
@@ -30,20 +145,39 @@ export function ForecastingModule() {
   const [trajectory, setTrajectory] = useState<TrajectoryPoint[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [initVz, setInitVz] = useState(150)   // m/s initial vertical velocity
+  const [initVz, setInitVz] = useState(150)
   const [simDurationSec, setSimDurationSec] = useState(120)
+  const [currentConditions, setCurrentConditions] = useState<CurrentConditions | null>(null)
+  const [weatherLoading, setWeatherLoading] = useState(false)
+  const [tileError, setTileError] = useState(false)
 
   const lat = latest?.latitude ?? 43.5448
   const lon = latest?.longitude ?? -80.2482
   const alt = latest?.altitude ?? 0
 
+  // Auto-fetch weather on mount
+  useEffect(() => {
+    let cancelled = false
+    setWeatherLoading(true)
+    fetchCurrentConditions(lat, lon)
+      .then(cond => { if (!cancelled) setCurrentConditions(cond) })
+      .catch(() => {/* silently ignore auto-fetch failure */})
+      .finally(() => { if (!cancelled) setWeatherLoading(false) })
+    return () => { cancelled = true }
+  // Only fetch when coordinates meaningfully change (round to 2dp to avoid float drift)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lat.toFixed(2), lon.toFixed(2)])
+
   const handleFetch = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const layers = await fetchWindLayers(lat, lon)
+      const [layers, cond] = await Promise.all([
+        fetchWindLayers(lat, lon),
+        fetchCurrentConditions(lat, lon),
+      ])
       setWindLayers(layers)
-
+      setCurrentConditions(cond)
       const traj = predictTrajectory(lat, lon, alt, initVz, simDurationSec, 1, layers)
       setTrajectory(traj)
     } catch (e) {
@@ -54,18 +188,26 @@ export function ForecastingModule() {
   }, [lat, lon, alt, initVz, simDurationSec])
 
   const landingPoint = trajectory[trajectory.length - 1]
-  const maxAlt = Math.max(...trajectory.map(p => p.altitudeM))
+  const maxAlt = trajectory.length > 0 ? Math.max(...trajectory.map(p => p.altitudeM)) : alt
 
   const mapPoints: Array<[number, number]> = trajectory.map(p => [p.latitude, p.longitude])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Header */}
+      {/* ── Live weather strip ──────────────────────────────── */}
+      <WeatherStrip cond={currentConditions} loading={weatherLoading} />
+
+      {/* ── Header / controls ───────────────────────────────── */}
       <div style={{
-        padding: '12px 16px', borderBottom: '1px solid var(--border)',
+        padding: '10px 16px', borderBottom: '1px solid var(--border)',
         display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, flexWrap: 'wrap',
       }}>
-        <span style={{ fontWeight: 600, fontSize: 13 }}>🌤️ Atmospheric Path Forecasting</span>
+        <span style={{
+          fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
+          color: 'var(--text-muted)', fontFamily: 'var(--mono)',
+        }}>
+          TRAJ PREDICT
+        </span>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <label style={{ fontSize: 11, color: 'var(--text-muted)' }}>Init Vz (m/s)</label>
@@ -88,21 +230,22 @@ export function ForecastingModule() {
           onClick={handleFetch}
           disabled={loading}
           style={{
-            padding: '5px 16px', borderRadius: 4, fontSize: 12, fontWeight: 600,
-            background: loading ? 'var(--surface-raised)' : 'var(--accent)',
-            border: '1px solid var(--border)',
-            color: loading ? 'var(--text-muted)' : '#000',
+            padding: '5px 16px', borderRadius: 4, fontSize: 11, fontWeight: 700,
+            background: loading ? 'var(--surface-3)' : 'rgba(56,189,248,0.12)',
+            border: `1px solid ${loading ? 'var(--border)' : 'rgba(56,189,248,0.3)'}`,
+            color: loading ? 'var(--text-muted)' : 'var(--accent)',
             cursor: loading ? 'wait' : 'pointer',
+            fontFamily: 'var(--mono)', letterSpacing: '0.08em',
           }}
         >
-          {loading ? '⏳ Fetching…' : '🌐 Fetch Wind & Predict'}
+          {loading ? 'FETCHING…' : '⟳ FETCH WIND & PREDICT'}
         </button>
 
-        {error && <span style={{ color: '#ff4444', fontSize: 12 }}>⚠ {error}</span>}
+        {error && <span style={{ color: 'var(--magenta)', fontSize: 11, fontFamily: 'var(--mono)' }}>⚠ {error}</span>}
 
         {landingPoint && (
-          <span style={{ fontSize: 12, color: '#44ff88', fontFamily: 'monospace', marginLeft: 'auto' }}>
-            Landing: {landingPoint.latitude.toFixed(5)}, {landingPoint.longitude.toFixed(5)} | Max Alt: {maxAlt.toFixed(0)}m
+          <span style={{ fontSize: 11, color: 'var(--lime)', fontFamily: 'var(--mono)', marginLeft: 'auto' }}>
+            LZ: {landingPoint.latitude.toFixed(5)}, {landingPoint.longitude.toFixed(5)} · APEX {maxAlt.toFixed(0)}m
           </span>
         )}
       </div>
@@ -116,13 +259,21 @@ export function ForecastingModule() {
         {/* Map */}
         <div style={{ gridRow: '1 / 3', borderRight: '1px solid var(--border)' }}>
           <MapContainer
+            className="forecast-map"
             center={[lat, lon]}
             zoom={13}
             style={{ width: '100%', height: '100%' }}
           >
+            <EnsureMapReady />
             <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; OpenStreetMap'
+              key={tileError ? 'osm' : 'voyager'}
+              url={tileError
+                ? 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+                : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'}
+              attribution={tileError ? '&copy; OpenStreetMap' : '&copy; OpenStreetMap &copy; CARTO'}
+              eventHandlers={{
+                tileerror: () => setTileError(true),
+              }}
             />
             <NoFlyZones />
 
@@ -130,14 +281,14 @@ export function ForecastingModule() {
             <CircleMarker
               center={[lat, lon]}
               radius={8}
-              pathOptions={{ color: '#44ff88', fillColor: '#44ff88', fillOpacity: 0.8 }}
+              pathOptions={{ color: '#a8ff3e', fillColor: '#a8ff3e', fillOpacity: 0.9 }}
             >
               <Popup>Launch site</Popup>
             </CircleMarker>
 
             {/* Predicted trajectory */}
             {mapPoints.length > 1 && (
-              <Polyline positions={mapPoints} pathOptions={{ color: '#00d4ff', weight: 2, dashArray: '6 4' }} />
+              <Polyline positions={mapPoints} pathOptions={{ color: '#38bdf8', weight: 2, dashArray: '6 4' }} />
             )}
 
             {/* Landing prediction */}
@@ -146,10 +297,8 @@ export function ForecastingModule() {
                 position={[landingPoint.latitude, landingPoint.longitude]}
                 icon={L.divIcon({
                   className: '',
-                  html: `<div style="width:16px;height:16px;border-radius:50%;
-                    background:#ff4444;border:2px solid #fff;
-                    box-shadow:0 0 8px #ff4444;"></div>`,
-                  iconSize: [16, 16], iconAnchor: [8, 8],
+                  html: `<div style="width:14px;height:14px;border-radius:50%;background:#ff0055;border:2px solid #fff;box-shadow:0 0 10px #ff0055;"></div>`,
+                  iconSize: [14, 14], iconAnchor: [7, 7],
                 })}
               >
                 <Popup>
@@ -168,21 +317,26 @@ export function ForecastingModule() {
         <div style={{
           padding: 14, borderBottom: '1px solid var(--border)', overflowY: 'auto',
         }}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10 }}>Wind Aloft Layers</div>
+          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', fontFamily: 'var(--mono)', marginBottom: 10 }}>
+            WIND ALOFT
+          </div>
           {windLayers.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-              No wind data. Click Fetch Wind &amp; Predict.
+            <div style={{ color: 'var(--text-dim)', fontSize: 11, fontFamily: 'var(--mono)' }}>
+              — no data — fetch to populate
             </div>
           ) : (
             windLayers.map((layer, i) => (
               <div key={i} style={{
                 display: 'flex', justifyContent: 'space-between',
-                padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.05)',
-                fontSize: 12, fontFamily: 'monospace',
+                padding: '5px 0', borderBottom: '1px solid rgba(255,255,255,0.04)',
+                fontSize: 11, fontFamily: 'var(--mono)',
               }}>
-                <span style={{ color: 'var(--text-muted)', width: 50 }}>{layer.altitudeM}m</span>
-                <span style={{ color: 'var(--accent)' }}>{layer.speedMs.toFixed(1)} m/s</span>
-                <span>
+                <span style={{ color: 'var(--text-dim)', width: 46 }}>{layer.altitudeM}m</span>
+                <span style={{
+                  color: layer.speedMs > 10 ? 'var(--amber)' : layer.speedMs > 5 ? 'var(--text)' : 'var(--lime)',
+                  fontWeight: 600,
+                }}>{layer.speedMs.toFixed(1)} m/s</span>
+                <span style={{ color: 'var(--text-muted)' }}>
                   {layer.directionDeg.toFixed(0)}° {compassBearing(layer.directionDeg)}
                 </span>
               </div>
@@ -192,26 +346,28 @@ export function ForecastingModule() {
 
         {/* Altitude chart */}
         <div style={{ padding: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Altitude Profile</div>
+          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', fontFamily: 'var(--mono)', marginBottom: 6 }}>
+            ALTITUDE PROFILE
+          </div>
           <ResponsiveContainer width="100%" height={160}>
             <LineChart data={trajectory} margin={{ top: 2, right: 8, bottom: 0, left: -10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
               <XAxis
                 dataKey="timeOffsetSec"
-                tick={{ fill: '#7a8a9a', fontSize: 10 }}
+                tick={{ fill: '#4a5a7a', fontSize: 9, fontFamily: 'var(--mono)' }}
                 tickFormatter={v => `${v}s`}
               />
-              <YAxis tick={{ fill: '#7a8a9a', fontSize: 10 }} tickFormatter={v => `${v}m`} />
+              <YAxis tick={{ fill: '#4a5a7a', fontSize: 9, fontFamily: 'var(--mono)' }} tickFormatter={v => `${v}m`} />
               <Tooltip
-                contentStyle={{ background: '#0d1929', border: '1px solid var(--border)', fontSize: 11 }}
+                contentStyle={{ background: '#0d1929', border: '1px solid var(--border)', fontSize: 10, fontFamily: 'var(--mono)' }}
                 labelFormatter={v => `T+${v}s`}
               />
               <Legend wrapperStyle={{ fontSize: 10 }} />
               <Line
                 type="monotone"
                 dataKey="altitudeM"
-                name="Altitude (m)"
-                stroke="#00d4ff"
+                name="Alt (m)"
+                stroke="var(--accent)"
                 dot={false}
                 isAnimationActive={false}
                 strokeWidth={1.5}
@@ -230,6 +386,7 @@ function compassBearing(deg: number): string {
 }
 
 const inputStyle: React.CSSProperties = {
-  width: 70, background: 'var(--surface-raised)', border: '1px solid var(--border)',
-  borderRadius: 4, padding: '3px 7px', color: 'var(--text)', fontSize: 12,
+  width: 70, background: 'var(--surface-3)', border: '1px solid var(--border)',
+  borderRadius: 4, padding: '3px 7px', color: 'var(--text)', fontSize: 11,
+  fontFamily: 'var(--mono)', outline: 'none',
 }

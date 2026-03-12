@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useHardwareStore } from '../../store/hardwareStore'
 import type { ProtocolSchema } from '../../types/protocol'
+import { useRocketDesignStore } from '../../store/rocketDesignStore'
+import { parseOpenRocketFile } from '../../utils/openRocket'
 import RawInspector from './RawInspector'
 import ProtocolTester from './ProtocolTester'
 
@@ -87,6 +89,8 @@ export default function HardwareConfig() {
   const [customJson, setCustomJson] = useState('')
   const [useCustom, setUseCustom] = useState(false)
   const [jsonError, setJsonError] = useState<string | null>(null)
+  const [importingDesign, setImportingDesign] = useState(false)
+  const { design, importError, setDesign, setImportError, clearDesign } = useRocketDesignStore()
 
   useEffect(() => {
     fetchPorts()
@@ -111,6 +115,22 @@ export default function HardwareConfig() {
     if (!proto) return
     if (!selectedPort) return
     await connect(selectedPort, selectedBaud, proto)
+  }
+
+  async function handleDesignImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImportingDesign(true)
+    setImportError(null)
+    try {
+      const parsed = await parseOpenRocketFile(file)
+      setDesign(parsed)
+    } catch (err) {
+      setImportError((err as Error).message)
+    } finally {
+      setImportingDesign(false)
+      e.target.value = ''
+    }
   }
 
   const TAB_STYLE = (t: Tab) =>
@@ -161,6 +181,67 @@ export default function HardwareConfig() {
 
       {/* Tab content */}
       <div className="flex-1 overflow-auto p-6">
+        <div className="mb-6 rounded-lg border border-gray-700 bg-gray-800/60 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-sm font-semibold text-white">OpenRocket Import</div>
+              <p className="mt-1 text-xs text-gray-400">
+                Import an OpenRocket <code className="rounded bg-gray-900 px-1">.ork</code> or legacy <code className="rounded bg-gray-900 px-1">.rkt</code> file to carry over rocket dimensions and design metadata.
+              </p>
+            </div>
+            <label className="inline-flex cursor-pointer items-center rounded bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-500">
+              {importingDesign ? 'Importing…' : 'Import Design'}
+              <input
+                type="file"
+                accept=".ork,.rkt,.xml"
+                className="hidden"
+                onChange={handleDesignImport}
+                disabled={importingDesign}
+              />
+            </label>
+          </div>
+
+          {importError && (
+            <div className="mt-3 rounded border border-red-700 bg-red-900/30 p-3 text-xs text-red-300">
+              {importError}
+            </div>
+          )}
+
+          {design ? (
+            <>
+              <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                {[
+                  ['Rocket', design.rocketName],
+                  ['Length', design.totalLengthMm !== null ? `${design.totalLengthMm} mm` : '—'],
+                  ['Diameter', design.maxDiameterMm !== null ? `${design.maxDiameterMm} mm` : '—'],
+                  ['Dry Mass', design.dryMassG !== null ? `${design.dryMassG} g` : '—'],
+                  ['Stages', String(design.stageCount)],
+                  ['Body Tubes', String(design.bodyTubeCount)],
+                  ['Fin Sets', String(design.finSetCount)],
+                  ['Total Fins', String(design.finCount)],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded border border-gray-700 bg-gray-900/70 p-3">
+                    <div className="text-[10px] uppercase tracking-[0.12em] text-gray-500">{label}</div>
+                    <div className="mt-1 font-mono text-sm font-semibold text-sky-300">{value}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 flex items-center gap-3 text-xs text-gray-500">
+                <span>Source: <span className="font-mono text-gray-300">{design.fileName}</span></span>
+                <span>Format: <span className="font-mono text-gray-300">{design.fileType.toUpperCase()}</span></span>
+                {design.sourceVersion && <span>Version: <span className="font-mono text-gray-300">{design.sourceVersion}</span></span>}
+                <button onClick={clearDesign} className="ml-auto rounded border border-gray-700 px-2 py-1 text-xs text-gray-300 hover:bg-gray-700">
+                  Clear Import
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="mt-3 text-xs text-gray-500">
+              No design imported yet. This does not generate telemetry; it only transfers rocket geometry and metadata from the design file.
+            </div>
+          )}
+        </div>
+
         {activeTab === 'connect' && (
           <ConnectionTab
             ports={ports}

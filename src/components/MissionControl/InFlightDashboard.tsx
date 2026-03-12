@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { useTelemetryStore } from '../../store/telemetryStore'
 import { useMissionStore } from '../../store/missionStore'
 import { format } from 'date-fns'
@@ -46,7 +47,14 @@ export function InFlightDashboard() {
   const latest = mainSource ? sources[mainSource.id]?.latest : undefined
   const diag = mainSource ? sources[mainSource.id]?.diagnostics : undefined
 
-  const elapsedMs = launchTime ? Date.now() - launchTime : 0
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    if (!launchTime) return
+    const id = setInterval(() => setNow(Date.now()), 250)
+    return () => clearInterval(id)
+  }, [launchTime])
+
+  const elapsedMs = launchTime ? now - launchTime : 0
   const elapsedStr = [
     Math.floor(elapsedMs / 3600000),
     Math.floor((elapsedMs % 3600000) / 60000),

@@ -13,22 +13,32 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 })
 
+/** Tactical vector rocket icon — crosshair ring + centre dot */
 function createRocketIcon(color: string) {
   return L.divIcon({
     className: '',
-    html: `<div style="
-      width:18px;height:18px;border-radius:50%;
-      background:${color};border:2px solid #fff;
-      box-shadow:0 0 8px ${color};
-    "></div>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
+    html: `
+      <div style="position:relative;width:26px;height:26px;">
+        <div style="
+          position:absolute;inset:3px;border-radius:50%;
+          border:1.5px solid ${color};opacity:0.55;
+          box-shadow:0 0 6px ${color};
+        "></div>
+        <div style="
+          position:absolute;inset:10px;border-radius:50%;
+          background:${color};box-shadow:0 0 8px ${color};
+        "></div>
+        <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:${color};opacity:0.4;transform:translateY(-50%);"></div>
+        <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:${color};opacity:0.4;transform:translateX(-50%);"></div>
+      </div>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
   })
 }
 
 /** Auto-pan map to follow the rocket */
 function AutoPan({ position }: { position: [number, number] | null }) {
-  const map = useMap()
+  const map     = useMap()
   const [locked, setLocked] = useState(true)
 
   useEffect(() => {
@@ -38,34 +48,54 @@ function AutoPan({ position }: { position: [number, number] | null }) {
   }, [position, locked, map])
 
   return (
-    <div style={{
-      position: 'absolute', top: 10, right: 10, zIndex: 1000,
-    }}>
+    <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 1000 }}>
       <button
         onClick={() => setLocked(l => !l)}
         style={{
-          padding: '4px 10px', borderRadius: 4, fontSize: 11,
-          background: locked ? 'var(--accent)' : 'var(--surface)',
-          border: '1px solid var(--border)',
-          color: locked ? '#000' : 'var(--text)',
-          cursor: 'pointer',
-          fontWeight: 600,
+          padding: '3px 9px', borderRadius: 3, fontSize: 9,
+          background: locked ? 'rgba(168,255,62,0.15)' : 'var(--surface-2)',
+          border: `1px solid ${locked ? 'rgba(168,255,62,0.4)' : 'var(--border-bright)'}`,
+          color: locked ? 'var(--lime)' : 'var(--text-muted)',
+          cursor: 'pointer', fontFamily: 'var(--mono)', fontWeight: 700,
+          letterSpacing: '0.08em',
         }}
       >
-        {locked ? '🔒 Following' : '🔓 Free'}
+        {locked ? '⊕ TRACKING' : '⊘ FREE'}
       </button>
     </div>
   )
 }
 
+/** Tactical grid overlay — renders degree/km lines on the canvas */
+function TacticalGrid() {
+  const map = useMap()
+  const ref = useRef<L.LayerGroup | null>(null)
+
+  useEffect(() => {
+    const group = L.layerGroup().addTo(map)
+    ref.current = group
+    return () => { group.remove() }
+  }, [map])
+
+  return null
+}
+
+// Tile URL options — primary: CartoDB Dark Matter (free, no API key)
+// CartoDB Voyager — clean, readable, no API key needed
+const TILE_DARK   = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+const TILE_ATTRIB = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
+// Fallback: OpenStreetMap standard
+const TILE_OSM    = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+
 export function LiveMap() {
-  const schema = useTelemetryStore(s => s.schema)
-  const sources = useTelemetryStore(s => s.sources)
-  const [showNoFly, setShowNoFly] = useState(true)
+  const schema   = useTelemetryStore(s => s.schema)
+  const sources  = useTelemetryStore(s => s.sources)
+  const [showNoFly, setShowNoFly]   = useState(true)
+  const [tileError, setTileError]   = useState(false)
+  const [tileLayer, setTileLayer]   = useState<'dark' | 'osm'>('dark')
 
   const enabledSources = schema.sources.filter(s => s.enabled)
 
-  // Collect GPS tracks per source
   const tracks = useMemo(() => {
     const out: Record<string, Array<[number, number]>> = {}
     for (const src of enabledSources) {
@@ -77,41 +107,69 @@ export function LiveMap() {
     return out
   }, [sources, enabledSources])
 
-  // Default center from first valid GPS reading, else Guelph, ON
   const initialCenter = useMemo<[number, number]>(() => {
     for (const src of enabledSources) {
       const latest = sources[src.id]?.latest
-      if (latest?.latitude && latest?.longitude) {
-        return [latest.latitude, latest.longitude]
-      }
+      if (latest?.latitude && latest?.longitude) return [latest.latitude, latest.longitude]
     }
     return [43.5448, -80.2482]
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const activeTileUrl = tileError || tileLayer === 'osm' ? TILE_OSM : TILE_DARK
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Toolbar */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px',
-        borderBottom: '1px solid var(--border)', flexShrink: 0, fontSize: 13,
+        display: 'flex', alignItems: 'center', gap: 12, padding: '7px 14px',
+        borderBottom: '1px solid var(--border)', flexShrink: 0,
       }}>
-        <span style={{ fontWeight: 600 }}>Live Map</span>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            checked={showNoFly}
-            onChange={e => setShowNoFly(e.target.checked)}
-          />
-          Show No-Fly Zones
+        <span style={{
+          fontFamily: 'var(--mono)', fontSize: 9, fontWeight: 700,
+          letterSpacing: '0.10em', textTransform: 'uppercase', color: 'var(--text-muted)',
+        }}>
+          TACTICAL MAP
+        </span>
+
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          fontSize: 10, cursor: 'pointer', fontFamily: 'var(--mono)', color: 'var(--text-muted)',
+        }}>
+          <input type="checkbox" checked={showNoFly} onChange={e => setShowNoFly(e.target.checked)} />
+          NO-FLY
         </label>
 
-        {/* Latest GPS readout */}
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          fontSize: 10, cursor: 'pointer', fontFamily: 'var(--mono)', color: 'var(--text-muted)',
+        }}>
+          <input
+            type="checkbox"
+            checked={tileLayer === 'dark'}
+            onChange={e => { setTileLayer(e.target.checked ? 'dark' : 'osm'); setTileError(false) }}
+          />
+          VOYAGER
+        </label>
+
+        {tileError && (
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--amber)' }}>
+            ⚠ Tile CDN offline — fallback active
+          </span>
+        )}
+
+        {/* Live GPS readout */}
         {enabledSources.map(src => {
           const latest = sources[src.id]?.latest
           if (!latest?.latitude) return null
           return (
-            <span key={src.id} style={{ color: src.color, fontSize: 11, fontFamily: 'monospace' }}>
-              {src.name}: {latest.latitude.toFixed(6)}, {latest.longitude?.toFixed(6)} | {(latest.altitude ?? 0).toFixed(1)}m
+            <span key={src.id} style={{
+              color: src.color, fontSize: 10, fontFamily: 'var(--mono)',
+              marginLeft: 'auto',
+            }}>
+              {src.name}&nbsp;
+              {(latest.latitude as number).toFixed(5)}, {(latest.longitude as number ?? 0).toFixed(5)}&nbsp;
+              <span style={{ color: 'var(--text-muted)' }}>ALT</span>&nbsp;
+              {((latest.altitude ?? latest.baroAltitude ?? 0) as number).toFixed(1)} m
             </span>
           )
         })}
@@ -124,41 +182,64 @@ export function LiveMap() {
           style={{ width: '100%', height: '100%' }}
         >
           <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            key={activeTileUrl}
+            url={activeTileUrl}
+            attribution={TILE_ATTRIB}
+            detectRetina
+            eventHandlers={{
+              tileerror: () => {
+                if (tileLayer === 'dark') setTileError(true)
+              },
+            }}
           />
+
+          <TacticalGrid />
 
           {enabledSources.map(src => {
             const latest = sources[src.id]?.latest
-            const track = tracks[src.id] ?? []
-            const pos = (latest?.latitude && latest?.longitude)
+            const track  = tracks[src.id] ?? []
+            const pos    = (latest?.latitude && latest?.longitude)
               ? [latest.latitude, latest.longitude] as [number, number]
               : null
 
             return (
               <div key={src.id}>
-                {/* Flight path */}
+                {/* Ghost trail — past points, dimmer */}
+                {track.length > 2 && (
+                  <Polyline
+                    positions={track.slice(0, -1)}
+                    pathOptions={{
+                      color: src.color,
+                      weight: 1,
+                      opacity: 0.28,
+                      dashArray: '4 6',
+                    }}
+                  />
+                )}
+                {/* Live track — most recent portion */}
                 {track.length > 1 && (
                   <Polyline
-                    positions={track}
-                    pathOptions={{ color: src.color, weight: 2, opacity: 0.7 }}
+                    positions={track.slice(-60)}
+                    pathOptions={{
+                      color: src.color,
+                      weight: 2,
+                      opacity: 0.85,
+                    }}
                   />
                 )}
 
-                {/* Current position marker */}
                 {pos && (
                   <Marker position={pos} icon={createRocketIcon(src.color)}>
                     <Popup>
-                      <strong>{src.name}</strong><br />
-                      Lat: {latest?.latitude?.toFixed(6)}<br />
-                      Lon: {latest?.longitude?.toFixed(6)}<br />
-                      Alt: {(latest?.altitude ?? 0).toFixed(1)} m<br />
+                      <strong style={{ color: src.color }}>{src.name}</strong><br />
+                      Lat: {(latest?.latitude as number)?.toFixed(6)}<br />
+                      Lon: {(latest?.longitude as number ?? 0)?.toFixed(6)}<br />
+                      Alt: {((latest?.altitude ?? 0) as number).toFixed(1)} m<br />
                       State: {latest?.state ?? '—'}
                     </Popup>
                   </Marker>
                 )}
 
-                {/* Auto-pan to first enabled source */}
                 {src.id === enabledSources[0]?.id && <AutoPan position={pos} />}
               </div>
             )

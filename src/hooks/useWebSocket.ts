@@ -185,14 +185,30 @@ export function useDemoSimulator(sourceId = 'rocket', hz = 10) {
       const spikeActive = Math.floor(t / 20) % 2 === 1 && Math.sin(t * 3) > 0.97
 
       const altitude = Math.max(0, 1200 * Math.sin(t * 0.15) + Math.random() * 5)
+
+      // Euler angles in degrees
+      const pitchDeg = 90 * Math.sin(t * 0.2) + (Math.random() - 0.5) * 2 + (spikeActive ? 45 : 0)
+      const yawDeg   = 45 * Math.sin(t * 0.1) + (Math.random() - 0.5) * 1
+      const rollDeg  = 20 * Math.cos(t * 0.3) + (Math.random() - 0.5) * 1
+
+      // Convert Euler (YXZ) → unit quaternion for real-sensor accuracy
+      const p2 = (pitchDeg * Math.PI / 180) / 2
+      const y2 = (yawDeg   * Math.PI / 180) / 2
+      const r2 = (rollDeg  * Math.PI / 180) / 2
+      const quatW = Math.cos(y2) * Math.cos(p2) * Math.cos(r2) + Math.sin(y2) * Math.sin(p2) * Math.sin(r2)
+      const quatX = Math.cos(y2) * Math.sin(p2) * Math.cos(r2) + Math.sin(y2) * Math.cos(p2) * Math.sin(r2)
+      const quatY = Math.sin(y2) * Math.cos(p2) * Math.cos(r2) - Math.cos(y2) * Math.sin(p2) * Math.sin(r2)
+      const quatZ = Math.cos(y2) * Math.cos(p2) * Math.sin(r2) - Math.sin(y2) * Math.sin(p2) * Math.cos(r2)
+
       const packet: TelemetryPacket = {
         seq,
         ts: Date.now() - Math.floor(Math.random() * 30),
         rcvTs: Date.now(),
         src: sourceId,
-        pitch: 90 * Math.sin(t * 0.2) + (Math.random() - 0.5) * 2 + (spikeActive ? 45 : 0),
-        yaw: 45 * Math.sin(t * 0.1) + (Math.random() - 0.5) * 1,
-        roll: 20 * Math.cos(t * 0.3) + (Math.random() - 0.5) * 1,
+        pitch: pitchDeg,
+        yaw:   yawDeg,
+        roll:  rollDeg,
+        quatW, quatX, quatY, quatZ,
         accelX: (Math.random() - 0.5) * 4 + (spikeActive ? 18 : 0),
         accelY: (Math.random() - 0.5) * 4,
         accelZ: 9.81 + Math.random() * 30 * Math.max(0, Math.sin(t * 0.3)),
@@ -212,6 +228,7 @@ export function useDemoSimulator(sourceId = 'rocket', hz = 10) {
         rssi: -60 - altitude * 0.02 + (Math.random() - 0.5) * 5,
         gpsFix: true,
         gpsSatellites: 9,
+        gpsHdop: 1.2 + Math.random() * 0.8,
         state: altitude > 10 ? (t < 5 ? 'BOOST' : t < 15 ? 'COAST' : 'DESCENT') : 'IDLE',
       }
       ingestPacket(packet)

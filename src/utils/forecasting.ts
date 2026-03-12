@@ -23,6 +23,86 @@ export interface OpenMeteoWindResponse {
   hourly_units: Record<string, string>
 }
 
+export interface CurrentConditions {
+  temperatureC: number
+  relativeHumidityPct: number
+  precipitationMm: number
+  windSpeedMs: number
+  windDirectionDeg: number
+  surfacePressureHPa: number
+  visibilityM: number | null
+  weatherCode: number
+  weatherDescription: string
+  fetchedAt: number
+}
+
+/** Decode WMO weather code into a short human label */
+function wmoDescription(code: number): string {
+  if (code === 0)             return 'Clear sky'
+  if (code <= 3)              return 'Partly cloudy'
+  if (code <= 9)              return 'Unknown'
+  if (code <= 19)             return 'Fog / haze'
+  if (code <= 29)             return 'Drizzle'
+  if (code <= 39)             return 'Freezing drizzle'
+  if (code <= 49)             return 'Fog depositng rime'
+  if (code <= 59)             return 'Drizzle'
+  if (code <= 69)             return 'Rain'
+  if (code <= 79)             return 'Snow grains'
+  if (code <= 89)             return 'Shower'
+  if (code <= 99)             return 'Thunderstorm'
+  return 'Unknown'
+}
+
+/** Fetch current surface conditions from Open-Meteo (no API key required) */
+export async function fetchCurrentConditions(lat: number, lon: number): Promise<CurrentConditions> {
+  const params = new URLSearchParams({
+    latitude:  lat.toFixed(6),
+    longitude: lon.toFixed(6),
+    current: [
+      'temperature_2m',
+      'relative_humidity_2m',
+      'precipitation',
+      'wind_speed_10m',
+      'wind_direction_10m',
+      'surface_pressure',
+      'visibility',
+      'weather_code',
+    ].join(','),
+    timezone: 'auto',
+    wind_speed_unit: 'ms',
+  })
+
+  const res = await fetch(`${OPEN_METEO_BASE}?${params}`)
+  if (!res.ok) throw new Error(`Open-Meteo weather error: ${res.status}`)
+
+  const data = await res.json() as {
+    current: {
+      temperature_2m: number
+      relative_humidity_2m: number
+      precipitation: number
+      wind_speed_10m: number
+      wind_direction_10m: number
+      surface_pressure: number
+      visibility: number | null
+      weather_code: number
+    }
+  }
+
+  const c = data.current
+  return {
+    temperatureC:        c.temperature_2m,
+    relativeHumidityPct: c.relative_humidity_2m,
+    precipitationMm:     c.precipitation,
+    windSpeedMs:         c.wind_speed_10m,
+    windDirectionDeg:    c.wind_direction_10m,
+    surfacePressureHPa:  c.surface_pressure,
+    visibilityM:         c.visibility,
+    weatherCode:         c.weather_code,
+    weatherDescription:  wmoDescription(c.weather_code),
+    fetchedAt:           Date.now(),
+  }
+}
+
 /** Fetch current wind aloft layers from Open-Meteo */
 export async function fetchWindLayers(lat: number, lon: number): Promise<WindLayer[]> {
   const params = new URLSearchParams({

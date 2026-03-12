@@ -71,6 +71,15 @@ const ICONS: Record<string, JSX.Element> = {
       <line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/>
     </svg>
   ),
+  serial: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="7" y="2" width="10" height="20" rx="2"/>
+      <line x1="12" y1="6" x2="12" y2="6.01"/>
+      <line x1="12" y1="10" x2="12" y2="10.01"/>
+      <line x1="12" y1="14" x2="12" y2="14.01"/>
+      <line x1="12" y1="18" x2="12" y2="18.01"/>
+    </svg>
+  ),
 }
 
 const NAV_GROUPS = [
@@ -103,6 +112,7 @@ const NAV_GROUPS = [
     views: [
       { id: 'replay',      label: 'Replay'       },
       { id: 'hardware',    label: 'Hardware'     },
+      { id: 'serial',      label: 'Serial Link'  },
     ],
   },
 ]

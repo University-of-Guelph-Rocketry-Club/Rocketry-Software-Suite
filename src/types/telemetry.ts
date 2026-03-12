@@ -5,10 +5,16 @@ export interface TelemetryPacket {
   rcvTs: number          // Unix timestamp milliseconds (local receive time)
   src: string            // source ID matching schema sources[].id
 
-  // --- IMU ---
+  // --- IMU (Euler degrees - legacy fallback) ---
   pitch?: number         // degrees, nose-up positive
   yaw?: number           // degrees, clockwise positive
   roll?: number          // degrees, right-roll positive
+
+  // --- Quaternion orientation (preferred over Euler - avoids gimbal lock) ---
+  quatW?: number         // scalar component  (unit quaternion: w²+x²+y²+z²=1)
+  quatX?: number         // i component
+  quatY?: number         // j component
+  quatZ?: number         // k component
 
   // --- Accelerometer (m/s²) ---
   accelX?: number
@@ -45,6 +51,21 @@ export interface TelemetryPacket {
 
   // Dynamic fields from schema
   [key: string]: number | string | boolean | undefined
+}
+
+/** Running statistics for a numeric sensor field */
+export interface FieldStats {
+  field: string
+  count: number
+  min: number
+  max: number
+  mean: number
+  /** Population std deviation */
+  std: number
+  /** Approximate median (P50) using reservoir */
+  median: number
+  /** Last recorded value */
+  last: number
 }
 
 /** Aggregated diagnostics for one source stream */

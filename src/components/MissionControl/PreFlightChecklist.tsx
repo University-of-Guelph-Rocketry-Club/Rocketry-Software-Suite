@@ -1,3 +1,4 @@
+import { useEffect, useMemo } from 'react'
 import { useMissionStore } from '../../store/missionStore'
 import { useTelemetryStore } from '../../store/telemetryStore'
 import type { ChecklistItem } from '../../types/telemetry'
@@ -75,29 +76,30 @@ function CategorySection({ category, items }: { category: string; items: Checkli
 
 export function PreFlightChecklist() {
   const checklist = useMissionStore(s => s.checklist)
-  const isReady = useMissionStore(s => s.isReadyToLaunch())
   const startMission = useMissionStore(s => s.startMission)
   const schema = useTelemetryStore(s => s.schema)
   const sources = useTelemetryStore(s => s.sources)
   const initChecklist = useMissionStore(s => s.initChecklist)
   const autoUpdate = useMissionStore(s => s.autoUpdateChecklist)
+  const isReady = checklist.filter(i => i.required).every(i => i.checked)
 
   // Group checklist by category
-  const grouped = CATEGORY_ORDER.reduce<Record<string, ChecklistItem[]>>((acc, cat) => {
+  const grouped = useMemo(() => CATEGORY_ORDER.reduce<Record<string, ChecklistItem[]>>((acc, cat) => {
     const items = checklist.filter(i => i.category === cat)
     if (items.length > 0) acc[cat] = items
     return acc
-  }, {})
+  }, {}), [checklist])
 
   // Auto-update from latest telemetry
   const mainLatest = sources[schema.sources[0]?.id ?? '']?.latest
-  if (mainLatest) {
+  useEffect(() => {
+    if (!mainLatest) return
     const latestRecord: Record<string, number | string | boolean | undefined> = {}
     for (const key of Object.keys(mainLatest)) {
       latestRecord[key] = (mainLatest as Record<string, unknown>)[key] as number | string | boolean | undefined
     }
     autoUpdate(latestRecord)
-  }
+  }, [autoUpdate, mainLatest])
 
   const requiredItems = checklist.filter(i => i.required)
   const checkedRequired = requiredItems.filter(i => i.checked)

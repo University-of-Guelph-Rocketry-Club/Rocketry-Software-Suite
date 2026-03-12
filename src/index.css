@@ -1,54 +1,68 @@
 /* ────────────────────────────────────────────────────────────────
-   ROCKETRY SUITE — Professional Aerospace Operations Theme
+   ROCKETRY SUITE — High-Fidelity Mission Control Theme
    ──────────────────────────────────────────────────────────────── */
 
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* ── Backgrounds ── */
-  --bg:              #04090f;
-  --bg-deep:         #020508;
-  --surface:         #080f1a;
-  --surface-2:       #0c1525;
-  --surface-3:       #111d34;
-  --surface-4:       #172032;
+  /* ── Backgrounds — deep navy/charcoal ── */
+  --bg:              #020408;
+  --bg-deep:         #010206;
+  --surface:         #060d18;
+  --surface-2:       #090f1e;
+  --surface-3:       #0d1628;
+  --surface-4:       #111d32;
 
-  /* ── Borders ── */
-  --border:          rgba(148, 163, 184, 0.07);
-  --border-bright:   rgba(148, 163, 184, 0.13);
-  --border-accent:   rgba(56, 189, 248, 0.28);
+  /* ── Micro borders ── */
+  --border:          rgba(100, 140, 180, 0.08);
+  --border-bright:   rgba(100, 140, 180, 0.15);
+  --border-accent:   rgba(56, 189, 248, 0.30);
 
   /* ── Primary Accent — Sky Blue ── */
   --accent:          #38bdf8;
-  --accent-dim:      rgba(56, 189, 248, 0.1);
-  --accent-glow:     0 0 18px rgba(56, 189, 248, 0.25);
-  --accent-border:   rgba(56, 189, 248, 0.3);
+  --accent-dim:      rgba(56, 189, 248, 0.09);
+  --accent-glow:     0 0 20px rgba(56, 189, 248, 0.28);
+  --accent-border:   rgba(56, 189, 248, 0.32);
 
-  /* ── Status ── */
-  --green:           #34d399;
-  --green-dim:       rgba(52, 211, 153, 0.1);
-  --green-glow:      0 0 12px rgba(52, 211, 153, 0.35);
-  --yellow:          #fbbf24;
-  --yellow-dim:      rgba(251, 191, 36, 0.1);
-  --red:             #f87171;
-  --red-dim:         rgba(248, 113, 113, 0.1);
-  --red-glow:        0 0 16px rgba(248, 113, 113, 0.4);
+  /* ── Signal colours ── */
+  /* Cyber Lime  — nominal / safe / go */
+  --lime:            #a8ff3e;
+  --lime-dim:        rgba(168, 255, 62, 0.07);
+  --lime-glow:       0 0 16px rgba(168, 255, 62, 0.50);
+  /* Amber — warning / caution */
+  --amber:           #ffb800;
+  --amber-dim:       rgba(255, 184, 0, 0.08);
+  --amber-glow:      0 0 16px rgba(255, 184, 0, 0.50);
+  /* Magenta — critical / abort */
+  --magenta:         #ff0055;
+  --magenta-dim:     rgba(255, 0, 85, 0.08);
+  --magenta-glow:    0 0 20px rgba(255, 0, 85, 0.55);
+
+  /* Legacy aliases — all existing components auto-adopt signal colours */
+  --green:           var(--lime);
+  --green-dim:       var(--lime-dim);
+  --green-glow:      var(--lime-glow);
+  --yellow:          var(--amber);
+  --yellow-dim:      var(--amber-dim);
+  --red:             var(--magenta);
+  --red-dim:         var(--magenta-dim);
+  --red-glow:        var(--magenta-glow);
 
   /* ── ML / AI — Violet ── */
   --ml:              #a78bfa;
-  --ml-dim:          rgba(167, 139, 250, 0.1);
-  --ml-glow:         0 0 18px rgba(167, 139, 250, 0.3);
+  --ml-dim:          rgba(167, 139, 250, 0.09);
+  --ml-glow:         0 0 18px rgba(167, 139, 250, 0.32);
   --ml-border:       rgba(167, 139, 250, 0.28);
 
   /* ── Text ── */
-  --text:            #d8e4ef;
-  --text-muted:      #4e6278;
-  --text-dim:        #2f3f52;
+  --text:            #ccd8e8;
+  --text-muted:      #3e546a;
+  --text-dim:        #253545;
 
-  /* ── Monospace font ── */
-  --mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  /* ── Monospace font  ← ALL data uses this ── */
+  --mono: 'JetBrains Mono', 'Fira Code', 'Roboto Mono', 'Consolas', monospace;
 
-  /* ── Deprecated aliases (kept for component compat) ── */
+  /* ── Deprecated aliases ── */
   --surface-raised:  var(--surface-3);
 
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -100,6 +114,42 @@ html, body, #root {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
+}
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+@keyframes health-pulse-ok {
+  0%, 100% { box-shadow: 0 0 4px rgba(168,255,62,0.6); }
+  50%       { box-shadow: 0 0 10px rgba(168,255,62,1.0); }
+}
+@keyframes health-pulse-warn {
+  0%, 100% { box-shadow: 0 0 4px rgba(255,184,0,0.6); }
+  50%       { box-shadow: 0 0 10px rgba(255,184,0,1.0); }
+}
+@keyframes health-pulse-crit {
+  0%, 100% { box-shadow: 0 0 4px rgba(255,0,85,0.6); }
+  50%       { box-shadow: 0 0 10px rgba(255,0,85,1.0); }
+}
+@keyframes gauge-sweep {
+  from { stroke-dashoffset: 314; }
+  to   { stroke-dashoffset: var(--gauge-target); }
+}
+@keyframes tminus-tick {
+  0%  { opacity: 1; }
+  49% { opacity: 1; }
+  50% { opacity: 0.3; }
+  99% { opacity: 0.3; }
+  100%{ opacity: 1; }
+}
+@keyframes scanline {
+  0%   { transform: translateY(0%); }
+  100% { transform: translateY(100%); }
+}
+@keyframes data-flash {
+  0%   { color: var(--lime); }
+  40%  { color: #ffffff; }
+  100% { color: var(--lime); }
 }
 
 /* ── Scrollbars ───────────────────────────────────────────────── */
@@ -172,11 +222,11 @@ html, body, #root {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.badge-green  { background: var(--green-dim);  color: var(--green); border: 1px solid rgba(52,211,153,0.2); }
-.badge-yellow { background: var(--yellow-dim); color: var(--yellow);border: 1px solid rgba(251,191,36,0.2); }
-.badge-red    { background: var(--red-dim);    color: var(--red);   border: 1px solid rgba(248,113,113,0.2); }
-.badge-accent { background: var(--accent-dim); color: var(--accent);border: 1px solid rgba(56,189,248,0.2); }
-.badge-ml     { background: var(--ml-dim);     color: var(--ml);    border: 1px solid rgba(167,139,250,0.2); }
+.badge-green  { background: var(--lime-dim);    color: var(--lime);    border: 1px solid rgba(168,255,62,0.22); }
+.badge-yellow { background: var(--amber-dim);   color: var(--amber);   border: 1px solid rgba(255,184,0,0.22); }
+.badge-red    { background: var(--magenta-dim); color: var(--magenta); border: 1px solid rgba(255,0,85,0.22); }
+.badge-accent { background: var(--accent-dim);  color: var(--accent);  border: 1px solid rgba(56,189,248,0.22); }
+.badge-ml     { background: var(--ml-dim);      color: var(--ml);      border: 1px solid rgba(167,139,250,0.22); }
 
 /* ── Status dot ─────────────────────────────────────────────── */
 .status-dot {
@@ -213,18 +263,39 @@ html, body, #root {
   backdrop-filter: blur(12px) !important;
 }
 
-/* ── Leaflet overrides ───────────────────────────────────────── */
+/* ── Leaflet — Tactical dark override ────────────────────────── */
 .leaflet-container {
-  background: #060c16 !important;
-  font-family: inherit;
+  background: #2a3040 !important;
+  font-family: var(--mono);
 }
-.leaflet-tile-pane { filter: brightness(0.8) saturate(0.65) hue-rotate(10deg); }
+.leaflet-tile-pane {
+  filter: brightness(0.88) saturate(0.6) contrast(1.08);
+}
+.forecast-map .leaflet-tile-pane {
+  filter: brightness(0.98) saturate(0.88) contrast(1.04);
+}
 .leaflet-bar a {
   background: var(--surface-2) !important;
-  color: var(--text) !important;
-  border-color: var(--border-bright) !important;
+  color: var(--lime) !important;
+  border-color: rgba(168,255,62,0.22) !important;
+  font-family: var(--mono);
 }
 .leaflet-bar a:hover { background: var(--surface-3) !important; }
+.leaflet-control-attribution {
+  background: rgba(2,8,16,0.75) !important;
+  color: var(--text-dim) !important;
+  font-size: 9px !important;
+}
+/* Tactical crosshair pop-ups */
+.leaflet-popup-content-wrapper {
+  background: var(--surface-2) !important;
+  border: 1px solid rgba(168,255,62,0.25) !important;
+  color: var(--text) !important;
+  border-radius: 4px !important;
+  font-family: var(--mono) !important;
+  font-size: 11px !important;
+}
+.leaflet-popup-tip { background: var(--surface-2) !important; }
 
 /* ── Form inputs ─────────────────────────────────────────────── */
 input[type=range]  { width: 100%; cursor: pointer; accent-color: var(--accent); }
@@ -249,4 +320,134 @@ input[type=text]:focus { border-color: var(--accent) !important; }
 }
 .alert-row.critical {
   animation: alert-flash 1s ease infinite, fade-in 0.25s ease;
+}
+
+/* ── CommandTerminal ─────────────────────────────────────────── */
+.cmd-terminal {
+  background: #010306;
+  position: relative;
+  overflow: hidden;
+}
+.cmd-terminal::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--lime), transparent);
+  opacity: 0.5;
+  pointer-events: none;
+}
+.cmd-line { display: flex; gap: 10px; line-height: 1.6; }
+.cmd-ts   { color: var(--text-dim); flex-shrink: 0; }
+.cmd-src  { color: var(--accent);   flex-shrink: 0; }
+.cmd-seq  { color: var(--text-muted); flex-shrink: 0; }
+.cmd-data { color: var(--lime); flex: 1; word-break: break-all; }
+.cmd-data.warn { color: var(--amber); }
+.cmd-data.crit { color: var(--magenta); }
+.cmd-cursor {
+  display: inline-block;
+  width: 7px; height: 13px;
+  background: var(--lime);
+  animation: blink-cursor 1s step-end infinite;
+  vertical-align: text-bottom;
+  margin-left: 3px;
+}
+
+/* ── HealthMatrix ────────────────────────────────────────────── */
+.health-matrix {
+  display: grid;
+  gap: 4px;
+}
+.health-cell {
+  border-radius: 2px;
+  border: 1px solid transparent;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 3px;
+  padding: 6px 4px;
+  cursor: default;
+  transition: transform 0.1s;
+}
+.health-cell:hover { transform: scale(1.06); }
+.health-cell.ok   {
+  background: rgba(168,255,62,0.08);
+  border-color: rgba(168,255,62,0.25);
+  animation: health-pulse-ok 2.5s ease-in-out infinite;
+}
+.health-cell.warn {
+  background: rgba(255,184,0,0.08);
+  border-color: rgba(255,184,0,0.28);
+  animation: health-pulse-warn 1.6s ease-in-out infinite;
+}
+.health-cell.crit {
+  background: rgba(255,0,85,0.1);
+  border-color: rgba(255,0,85,0.35);
+  animation: health-pulse-crit 0.8s ease-in-out infinite;
+}
+.health-cell.offline {
+  background: rgba(20,30,45,0.6);
+  border-color: rgba(60,80,100,0.18);
+}
+.health-cell-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+}
+.health-cell.ok      .health-cell-dot { background: var(--lime); }
+.health-cell.warn    .health-cell-dot { background: var(--amber); }
+.health-cell.crit    .health-cell-dot { background: var(--magenta); }
+.health-cell.offline .health-cell-dot { background: var(--text-dim); }
+.health-cell-label {
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.2;
+}
+.health-cell.ok      .health-cell-label { color: var(--lime); }
+.health-cell.warn    .health-cell-label { color: var(--amber); }
+.health-cell.crit    .health-cell-label { color: var(--magenta); }
+.health-cell.offline .health-cell-label { color: var(--text-dim); }
+
+/* ── T-Minus Clock ───────────────────────────────────────────── */
+.tminus-display {
+  font-family: var(--mono);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--lime);
+  text-shadow: var(--lime-glow);
+  line-height: 1;
+}
+.tminus-display.counting { color: var(--amber); text-shadow: var(--amber-glow); }
+.tminus-display.liftoff  { color: var(--accent); text-shadow: var(--accent-glow);
+                            animation: tminus-tick 0.5s step-end infinite; }
+
+/* ── G-Force gauge ───────────────────────────────────────────── */
+.gforce-gauge { position: relative; }
+.gforce-value {
+  font-family: var(--mono);
+  font-weight: 700;
+  text-align: center;
+  line-height: 1;
+}
+.gforce-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+/* ── Stepped chart line extra style ─────────────────────────── */
+.recharts-line-curve { stroke-linejoin: miter !important; }
+
+/* ── Panel micro-border glow on hover ───────────────────────── */
+.panel-glow:hover {
+  border-color: var(--border-accent) !important;
+  box-shadow: inset 0 0 0 1px rgba(56,189,248,0.05), 0 0 18px rgba(56,189,248,0.06) !important;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
