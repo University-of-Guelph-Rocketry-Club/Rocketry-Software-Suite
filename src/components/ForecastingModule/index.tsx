@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap, CircleMarker } from 'react-leaflet'
+import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap, useMapEvents, CircleMarker } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useTelemetryStore } from '../../store/telemetryStore'
@@ -36,6 +36,104 @@ function FitBounds({ points }: { points: Array<[number, number]> }) {
     map.fitBounds(points)
   }
   return null
+}
+
+const PRECIP_MIN_ZOOM = 8
+
+function ForecastRadarLayer({
+  enabled,
+  onStatus,
+}: {
+  enabled: boolean
+  onStatus: (msg: string | null) => void
+}) {
+  const map = useMap()
+  const [zoom, setZoom] = useState(map.getZoom())
+  const [tileUrl, setTileUrl] = useState<string | null>(null)
+
+  useMapEvents({
+    zoomend: () => setZoom(map.getZoom()),
+  })
+
+  useEffect(() => {
+    if (!enabled) {
+      onStatus(null)
+      return
+    }
+
+    if (zoom < PRECIP_MIN_ZOOM) {
+      onStatus(`Radar visible at zoom ${PRECIP_MIN_ZOOM}+`)
+      return
+    }
+
+    onStatus(null)
+  }, [enabled, zoom, onStatus])
+
+  useEffect(() => {
+    if (!enabled) {
+      onStatus(null)
+      return
+    }
+
+    let cancelled = false
+    let timerId: number | null = null
+
+    const loadLatestFrame = async () => {
+      try {
+        const res = await fetch('https://api.rainviewer.com/public/weather-maps.json')
+        if (!res.ok) throw new Error('weather map metadata unavailable')
+
+        const data = await res.json() as {
+          host?: string
+          radar?: {
+            past?: Array<{ path?: string }>
+            nowcast?: Array<{ path?: string }>
+          }
+        }
+
+        const host = data.host ?? 'https://tilecache.rainviewer.com'
+        const nowcast = data.radar?.nowcast ?? []
+        const past = data.radar?.past ?? []
+        const latestPath = (nowcast.length > 0 ? nowcast[nowcast.length - 1]?.path : undefined)
+          ?? (past.length > 0 ? past[past.length - 1]?.path : undefined)
+
+        if (!latestPath) throw new Error('no radar frame path')
+        if (cancelled) return
+
+        setTileUrl(`${host}${latestPath}/256/{z}/{x}/{y}/2/1_1.png`)
+      } catch {
+        if (!cancelled) {
+          setTileUrl('https://tilecache.rainviewer.com/v2/radar/nowcast_0/256/{z}/{x}/{y}/2/1_1.png')
+          onStatus('Radar provider limited right now')
+        }
+      }
+    }
+
+    loadLatestFrame()
+    // Refresh radar frame periodically so the forecast map stays live.
+    timerId = window.setInterval(loadLatestFrame, 120000)
+
+    return () => {
+      cancelled = true
+      if (timerId) window.clearInterval(timerId)
+    }
+  }, [enabled, onStatus])
+
+  if (!enabled) return null
+  if (zoom < PRECIP_MIN_ZOOM || !tileUrl) return null
+
+  return (
+    <TileLayer
+      key={tileUrl}
+      url={tileUrl}
+      attribution="&copy; RainViewer"
+      opacity={0.45}
+      maxNativeZoom={10}
+      eventHandlers={{
+        tileerror: () => onStatus('Radar tiles unavailable for this zoom/area'),
+      }}
+    />
+  )
 }
 
 // ── Current conditions strip ───────────────────────────────────
@@ -150,42 +248,76 @@ export function ForecastingModule() {
   const [currentConditions, setCurrentConditions] = useState<CurrentConditions | null>(null)
   const [weatherLoading, setWeatherLoading] = useState(false)
   const [tileError, setTileError] = useState(false)
+  const [showPrecip, setShowPrecip] = useState(true)
+  const [autoUpdate, setAutoUpdate] = useState(true)
+  const [radarStatus, setRadarStatus] = useState<string | null>(null)
 
   const lat = latest?.latitude ?? 43.5448
   const lon = latest?.longitude ?? -80.2482
   const alt = latest?.altitude ?? 0
 
-  // Auto-fetch weather on mount
+  const refreshConditions = useCallback(async (silent = false) => {
+    if (!silent) setWeatherLoading(true)
+    try {
+      const cond = await fetchCurrentConditions(lat, lon)
+      setCurrentConditions(cond)
+    } catch {
+      // Keep last known conditions as fallback.
+    } finally {
+      if (!silent) setWeatherLoading(false)
+    }
+  }, [lat, lon])
+
   useEffect(() => {
     let cancelled = false
-    setWeatherLoading(true)
-    fetchCurrentConditions(lat, lon)
-      .then(cond => { if (!cancelled) setCurrentConditions(cond) })
-      .catch(() => {/* silently ignore auto-fetch failure */})
-      .finally(() => { if (!cancelled) setWeatherLoading(false) })
-    return () => { cancelled = true }
-  // Only fetch when coordinates meaningfully change (round to 2dp to avoid float drift)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lat.toFixed(2), lon.toFixed(2)])
+    let intervalId: number | null = null
 
-  const handleFetch = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+    const run = async (silent: boolean) => {
+      if (cancelled) return
+      await refreshConditions(silent)
+    }
+
+    run(false)
+    if (autoUpdate) {
+      intervalId = window.setInterval(() => { void run(true) }, 45000)
+    }
+
+    return () => {
+      cancelled = true
+      if (intervalId) window.clearInterval(intervalId)
+    }
+  }, [autoUpdate, refreshConditions])
+
+  const refreshForecast = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true)
+      setError(null)
+    }
     try {
-      const [layers, cond] = await Promise.all([
-        fetchWindLayers(lat, lon),
-        fetchCurrentConditions(lat, lon),
-      ])
+      const layers = await fetchWindLayers(lat, lon)
       setWindLayers(layers)
-      setCurrentConditions(cond)
       const traj = predictTrajectory(lat, lon, alt, initVz, simDurationSec, 1, layers)
       setTrajectory(traj)
     } catch (e) {
-      setError((e as Error).message)
+      if (!silent) {
+        setError((e as Error).message)
+      }
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [lat, lon, alt, initVz, simDurationSec])
+
+  const handleFetch = useCallback(async () => {
+    await Promise.all([refreshForecast(false), refreshConditions(false)])
+  }, [refreshConditions, refreshForecast])
+
+  useEffect(() => {
+    if (!autoUpdate) return
+    const intervalId = window.setInterval(() => {
+      void refreshForecast(true)
+    }, 120000)
+    return () => window.clearInterval(intervalId)
+  }, [autoUpdate, refreshForecast])
 
   const landingPoint = trajectory[trajectory.length - 1]
   const maxAlt = trajectory.length > 0 ? Math.max(...trajectory.map(p => p.altitudeM)) : alt
@@ -241,7 +373,26 @@ export function ForecastingModule() {
           {loading ? 'FETCHING…' : '⟳ FETCH WIND & PREDICT'}
         </button>
 
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--mono)',
+        }}>
+          <input type="checkbox" checked={showPrecip} onChange={e => setShowPrecip(e.target.checked)} />
+          RADAR
+        </label>
+
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--mono)',
+        }}>
+          <input type="checkbox" checked={autoUpdate} onChange={e => setAutoUpdate(e.target.checked)} />
+          AUTO WX
+        </label>
+
         {error && <span style={{ color: 'var(--magenta)', fontSize: 11, fontFamily: 'var(--mono)' }}>⚠ {error}</span>}
+        {!error && radarStatus && (
+          <span style={{ color: 'var(--amber)', fontSize: 10, fontFamily: 'var(--mono)' }}>{radarStatus}</span>
+        )}
 
         {landingPoint && (
           <span style={{ fontSize: 11, color: 'var(--lime)', fontFamily: 'var(--mono)', marginLeft: 'auto' }}>
@@ -275,6 +426,7 @@ export function ForecastingModule() {
                 tileerror: () => setTileError(true),
               }}
             />
+            <ForecastRadarLayer enabled={showPrecip} onStatus={setRadarStatus} />
             <NoFlyZones />
 
             {/* Launch point */}
