@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useTelemetryStore } from '../../store/telemetryStore'
 import { NoFlyZones } from './NoFlyZones'
+import { CivilOverlays } from './CivilOverlays'
 
 // Fix Leaflet default icon paths for bundled environments
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl
@@ -80,19 +81,53 @@ function TacticalGrid() {
   return null
 }
 
-// Tile URL options — primary: CartoDB Dark Matter (free, no API key)
-// CartoDB Voyager — clean, readable, no API key needed
-const TILE_DARK   = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
-const TILE_ATTRIB = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
-// Fallback: OpenStreetMap standard
-const TILE_OSM    = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+type MapMode = 'regular' | 'terrain' | 'satellite' | 'tactical' | 'precipitation'
+
+const MAP_MODE_CONFIG: Record<MapMode, { label: string; url: string; attribution: string }> = {
+  regular: {
+    label: 'Regular',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  },
+  terrain: {
+    label: 'Terrain',
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    attribution:
+      'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, SRTM | Style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
+  },
+  satellite: {
+    label: 'Satellite',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri',
+  },
+  tactical: {
+    label: 'Tactical',
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+  },
+  precipitation: {
+    label: 'Precipitation',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  },
+}
+
+const PRECIP_OVERLAY = {
+  url: 'https://tilecache.rainviewer.com/v2/radar/nowcast_0/256/{z}/{x}/{y}/2/1_1.png',
+  attribution: '&copy; <a href="https://www.rainviewer.com/">RainViewer</a>',
+}
 
 export function LiveMap() {
   const schema   = useTelemetryStore(s => s.schema)
   const sources  = useTelemetryStore(s => s.sources)
-  const [showNoFly, setShowNoFly]   = useState(true)
-  const [tileError, setTileError]   = useState(false)
-  const [tileLayer, setTileLayer]   = useState<'dark' | 'osm'>('dark')
+  const [showNoFly, setShowNoFly] = useState(true)
+  const [showCivil, setShowCivil] = useState(false)
+  const [showRangeRings, setShowRangeRings] = useState(true)
+  const [showPrecip, setShowPrecip] = useState(false)
+  const [tileError, setTileError] = useState(false)
+  const [precipError, setPrecipError] = useState(false)
+  const [mapMode, setMapMode] = useState<MapMode>('tactical')
 
   const enabledSources = schema.sources.filter(s => s.enabled)
 
@@ -115,7 +150,10 @@ export function LiveMap() {
     return [43.5448, -80.2482]
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const activeTileUrl = tileError || tileLayer === 'osm' ? TILE_OSM : TILE_DARK
+  const leadSourceId = enabledSources[0]?.id
+  const leadTrack = leadSourceId ? tracks[leadSourceId] ?? [] : []
+  const ringCenter = leadTrack[0] ?? initialCenter
+  const tileConfig = MAP_MODE_CONFIG[mapMode]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -143,17 +181,66 @@ export function LiveMap() {
           display: 'flex', alignItems: 'center', gap: 5,
           fontSize: 10, cursor: 'pointer', fontFamily: 'var(--mono)', color: 'var(--text-muted)',
         }}>
+          <input type="checkbox" checked={showCivil} onChange={e => setShowCivil(e.target.checked)} />
+          CIVIL
+        </label>
+
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          fontSize: 10, cursor: 'pointer', fontFamily: 'var(--mono)', color: 'var(--text-muted)',
+        }}>
           <input
             type="checkbox"
-            checked={tileLayer === 'dark'}
-            onChange={e => { setTileLayer(e.target.checked ? 'dark' : 'osm'); setTileError(false) }}
+            checked={showRangeRings}
+            onChange={e => setShowRangeRings(e.target.checked)}
           />
-          VOYAGER
+          RANGE RINGS
+        </label>
+
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          fontSize: 10, cursor: 'pointer', fontFamily: 'var(--mono)', color: 'var(--text-muted)',
+        }}>
+          <input type="checkbox" checked={showPrecip} onChange={e => setShowPrecip(e.target.checked)} />
+          PRECIP
+        </label>
+
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          fontSize: 10, cursor: 'pointer', fontFamily: 'var(--mono)', color: 'var(--text-muted)',
+        }}>
+          MODE
+          <select
+            value={mapMode}
+            onChange={e => {
+              setMapMode(e.target.value as MapMode)
+              setTileError(false)
+            }}
+            style={{
+              background: 'var(--surface-2)',
+              color: 'var(--text)',
+              border: '1px solid var(--border-bright)',
+              borderRadius: 3,
+              fontFamily: 'var(--mono)',
+              fontSize: 10,
+              padding: '2px 6px',
+            }}
+          >
+            {Object.entries(MAP_MODE_CONFIG).map(([key, cfg]) => (
+              <option key={key} value={key}>{cfg.label}</option>
+            ))}
+          </select>
         </label>
 
         {tileError && (
           <span style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--amber)' }}>
-            ⚠ Tile CDN offline — fallback active
+            Tile source offline for this mode
+          </span>
+        )}
+
+        {precipError && (
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--amber)' }}>
+            Precipitation overlay unavailable
           </span>
         )}
 
@@ -182,16 +269,29 @@ export function LiveMap() {
           style={{ width: '100%', height: '100%' }}
         >
           <TileLayer
-            key={activeTileUrl}
-            url={activeTileUrl}
-            attribution={TILE_ATTRIB}
+            key={`${mapMode}:${tileConfig.url}`}
+            url={tileConfig.url}
+            attribution={tileConfig.attribution}
             detectRetina
             eventHandlers={{
               tileerror: () => {
-                if (tileLayer === 'dark') setTileError(true)
+                setTileError(true)
               },
             }}
           />
+
+          {showPrecip && (
+            <TileLayer
+              key="precip"
+              url={PRECIP_OVERLAY.url}
+              attribution={PRECIP_OVERLAY.attribution}
+              opacity={0.45}
+              eventHandlers={{
+                tileerror: () => setPrecipError(true),
+                loading: () => setPrecipError(false),
+              }}
+            />
+          )}
 
           <TacticalGrid />
 
@@ -246,6 +346,15 @@ export function LiveMap() {
           })}
 
           {showNoFly && <NoFlyZones />}
+          {showCivil && <CivilOverlays />}
+
+          {showRangeRings && ringCenter && (
+            <>
+              <Circle center={ringCenter} radius={500} pathOptions={{ color: '#6ee7ff', weight: 1, opacity: 0.5, fillOpacity: 0.02 }} />
+              <Circle center={ringCenter} radius={1000} pathOptions={{ color: '#6ee7ff', weight: 1, opacity: 0.4, fillOpacity: 0 }} />
+              <Circle center={ringCenter} radius={2000} pathOptions={{ color: '#6ee7ff', weight: 1, opacity: 0.35, fillOpacity: 0 }} />
+            </>
+          )}
         </MapContainer>
       </div>
     </div>

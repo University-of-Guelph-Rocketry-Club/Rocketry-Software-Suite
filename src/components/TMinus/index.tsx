@@ -19,6 +19,8 @@ export function TMinus({ scheduledT0 }: TMinusProps) {
   const [customT0, setCustomT0]   = useState<number | null>(null)
   const [inputVal, setInputVal]   = useState('')
   const [editing, setEditing]     = useState(false)
+  const [isPaused, setIsPaused]   = useState(false)
+  const [pausedDisplay, setPausedDisplay] = useState({ negative: true, h: 0, m: 0, s: 0, ms: 0, launched: false })
 
   const t0 = scheduledT0 ?? customT0
 
@@ -27,6 +29,11 @@ export function TMinus({ scheduledT0 }: TMinusProps) {
   const rafRef = useRef<number>(0)
 
   const tick = useCallback(() => {
+    if (isPaused) {
+      rafRef.current = requestAnimationFrame(tick)
+      return
+    }
+
     const now   = Date.now()
     let delta: number
     let negative: boolean
@@ -51,9 +58,11 @@ export function TMinus({ scheduledT0 }: TMinusProps) {
     const s   = Math.floor((abs % 60_000) / 1_000)
     const ms  = abs % 1_000
 
-    setDisplay({ negative, h, m, s, ms, launched: delta < 0 && !launchTime })
+    const next = { negative, h, m, s, ms, launched: delta < 0 && !launchTime }
+    setDisplay(next)
+    setPausedDisplay(next)
     rafRef.current = requestAnimationFrame(tick)
-  }, [phase, launchTime, t0])
+  }, [isPaused, phase, launchTime, t0])
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(tick)
@@ -61,12 +70,13 @@ export function TMinus({ scheduledT0 }: TMinusProps) {
   }, [tick])
 
   const isInFlight = phase === 'in-flight'
-  const prefix     = isInFlight || (!display.negative && display.launched) ? 'T+' : 'T−'
+  const shown = isPaused ? pausedDisplay : display
+  const prefix     = isInFlight || (!shown.negative && shown.launched) ? 'T+' : 'T−'
 
   // Color: lime while holding, amber < 60 s, accent after liftoff
   const clockColor = isInFlight
     ? 'var(--accent)'
-    : (display.h === 0 && display.m === 0 && display.s < 60 && !display.negative)
+    : (shown.h === 0 && shown.m === 0 && shown.s < 60 && !shown.negative)
       ? 'var(--amber)'
       : 'var(--lime)'
 
@@ -100,8 +110,8 @@ export function TMinus({ scheduledT0 }: TMinusProps) {
         textShadow: `0 0 18px ${clockColor}`,
       }}>
         <span style={{ fontSize: 14, opacity: 0.7, marginRight: 4 }}>{prefix}</span>
-        {pad2(display.h)}:{pad2(display.m)}:{pad2(display.s)}
-        <span style={{ fontSize: 18, opacity: 0.65 }}>.{pad3(display.ms)}</span>
+        {pad2(shown.h)}:{pad2(shown.m)}:{pad2(shown.s)}
+        <span style={{ fontSize: 18, opacity: 0.65 }}>.{pad3(shown.ms)}</span>
       </div>
 
       {/* Sub-label */}
@@ -110,7 +120,7 @@ export function TMinus({ scheduledT0 }: TMinusProps) {
         letterSpacing: '0.18em', textTransform: 'uppercase',
         color: 'var(--text-muted)',
       }}>
-        {isInFlight ? 'MISSION ELAPSED' : t0 ? 'COUNTDOWN TO T0' : 'AWAITING T0'}
+        {isPaused ? 'TIMER STOPPED' : isInFlight ? 'MISSION ELAPSED' : t0 ? 'COUNTDOWN TO T0' : 'AWAITING T0'}
       </div>
 
       {/* Controls */}
@@ -151,6 +161,22 @@ export function TMinus({ scheduledT0 }: TMinusProps) {
           )}
         </div>
       )}
+
+      <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+        <button
+          onClick={() => {
+            if (isPaused) {
+              setIsPaused(false)
+              return
+            }
+            setPausedDisplay(display)
+            setIsPaused(true)
+          }}
+          style={btnStyle(isPaused ? '#4ade80' : '#f59e0b')}
+        >
+          {isPaused ? 'RESUME' : 'STOP'}
+        </button>
+      </div>
     </div>
   )
 }
