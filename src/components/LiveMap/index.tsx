@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useTelemetryStore } from '../../store/telemetryStore'
@@ -118,6 +118,97 @@ const PRECIP_OVERLAY = {
   attribution: '&copy; <a href="https://www.rainviewer.com/">RainViewer</a>',
 }
 
+const PRECIP_MIN_ZOOM = 8
+
+function PrecipitationLayer({
+  enabled,
+  onError,
+}: {
+  enabled: boolean
+  onError: (msg: string | null) => void
+}) {
+  const map = useMap()
+  const [zoom, setZoom] = useState(map.getZoom())
+  const [tileUrl, setTileUrl] = useState<string | null>(null)
+
+  useMapEvents({
+    zoomend: () => setZoom(map.getZoom()),
+  })
+
+  useEffect(() => {
+    if (!enabled) {
+      onError(null)
+      return
+    }
+    if (zoom < PRECIP_MIN_ZOOM) {
+      onError(`Precipitation overlay available at zoom ${PRECIP_MIN_ZOOM}+`)
+    }
+  }, [enabled, zoom, onError])
+
+  useEffect(() => {
+    if (!enabled) {
+      onError(null)
+      return
+    }
+
+    let cancelled = false
+
+    const loadFrame = async () => {
+      try {
+        const res = await fetch('https://api.rainviewer.com/public/weather-maps.json')
+        if (!res.ok) throw new Error('Radar metadata unavailable')
+
+        const data = await res.json() as {
+          host?: string
+          radar?: {
+            past?: Array<{ path?: string }>
+            nowcast?: Array<{ path?: string }>
+          }
+        }
+
+        const host = data.host ?? 'https://tilecache.rainviewer.com'
+        const nowcast = data.radar?.nowcast ?? []
+        const past = data.radar?.past ?? []
+        const latestNowcastPath = nowcast.length > 0 ? nowcast[nowcast.length - 1]?.path : undefined
+        const latestPastPath = past.length > 0 ? past[past.length - 1]?.path : undefined
+        const latestPath = latestNowcastPath ?? latestPastPath
+
+        if (!latestPath) throw new Error('No radar frames available')
+        if (!cancelled) {
+          setTileUrl(`${host}${latestPath}/256/{z}/{x}/{y}/2/1_1.png`)
+          onError(null)
+        }
+      } catch {
+        if (!cancelled) {
+          setTileUrl(PRECIP_OVERLAY.url)
+          onError('Radar data source unavailable')
+        }
+      }
+    }
+
+    loadFrame()
+    return () => { cancelled = true }
+  }, [enabled, onError])
+
+  if (!enabled) return null
+  if (zoom < PRECIP_MIN_ZOOM) return null
+  if (!tileUrl) return null
+
+  return (
+    <TileLayer
+      key={tileUrl}
+      url={tileUrl}
+      attribution={PRECIP_OVERLAY.attribution}
+      opacity={0.45}
+      maxNativeZoom={10}
+      eventHandlers={{
+        tileerror: () => onError('Precipitation tiles unavailable for this area/zoom'),
+        loading: () => onError(null),
+      }}
+    />
+  )
+}
+
 export function LiveMap() {
   const schema   = useTelemetryStore(s => s.schema)
   const sources  = useTelemetryStore(s => s.sources)
@@ -126,7 +217,7 @@ export function LiveMap() {
   const [showRangeRings, setShowRangeRings] = useState(true)
   const [showPrecip, setShowPrecip] = useState(false)
   const [tileError, setTileError] = useState(false)
-  const [precipError, setPrecipError] = useState(false)
+  const [precipMessage, setPrecipMessage] = useState<string | null>(null)
   const [mapMode, setMapMode] = useState<MapMode>('tactical')
 
   const enabledSources = schema.sources.filter(s => s.enabled)
@@ -238,9 +329,9 @@ export function LiveMap() {
           </span>
         )}
 
-        {precipError && (
+        {precipMessage && (
           <span style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--amber)' }}>
-            Precipitation overlay unavailable
+            {precipMessage}
           </span>
         )}
 
@@ -280,18 +371,7 @@ export function LiveMap() {
             }}
           />
 
-          {showPrecip && (
-            <TileLayer
-              key="precip"
-              url={PRECIP_OVERLAY.url}
-              attribution={PRECIP_OVERLAY.attribution}
-              opacity={0.45}
-              eventHandlers={{
-                tileerror: () => setPrecipError(true),
-                loading: () => setPrecipError(false),
-              }}
-            />
-          )}
+          <PrecipitationLayer enabled={showPrecip} onError={setPrecipMessage} />
 
           <TacticalGrid />
 
