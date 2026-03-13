@@ -11,6 +11,7 @@ import { LiveMap } from './components/LiveMap'
 import { PacketDiagnostics } from './components/PacketDiagnostics'
 import { ReplayMode } from './components/ReplayMode'
 import { MissionControl } from './components/MissionControl'
+import { MissionPlanner } from './components/MissionPlanner'
 import { ForecastingModule } from './components/ForecastingModule'
 import { FloatTracker } from './components/FloatTracker'
 import HardwareConfig from './components/HardwareConfig'
@@ -577,6 +578,7 @@ export default function App() {
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':    return <Dashboard />
+      case 'planner':      return <FullPanel title="MISSION PLANNER" icon={<MapIcon />}><MissionPlanner /></FullPanel>
       case '3d':           return <FullPanel title="3D ATTITUDE" icon={<CubeIcon />}><RocketView3D /></FullPanel>
       case 'charts':       return <FullPanel title="TELEMETRY CHARTS" icon={<ChartIcon />}><TelemetryCharts /></FullPanel>
       case 'map':          return <FullPanel title="VECTOR MAP" icon={<MapIcon />}><LiveMap /></FullPanel>

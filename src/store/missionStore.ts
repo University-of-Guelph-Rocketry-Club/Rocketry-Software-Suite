@@ -18,6 +18,7 @@ interface MissionStore {
   setPhase: (phase: MissionPhase) => void
   startMission: () => void
   endMission: () => void
+  resetMission: () => void
   isReadyToLaunch: () => boolean
 }
 
@@ -147,6 +148,22 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   },
 
   endMission: () => set({ phase: 'recovery' }),
+
+  resetMission: () => {
+    set(s => ({
+      phase: 'pre-flight',
+      launchTime: null,
+      missionElapsedMs: 0,
+      checklist: s.checklist.map(item => ({
+        ...item,
+        checked: false,
+        bypassed: false,
+        bypassReason: undefined,
+        bypassedAt: undefined,
+        autoValue: undefined,
+      })),
+    }))
+  },
 
   isReadyToLaunch: () => {
     const { checklist } = get()

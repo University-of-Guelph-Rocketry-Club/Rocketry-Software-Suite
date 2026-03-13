@@ -62,6 +62,13 @@ const ICONS: Record<string, JSX.Element> = {
       <polyline points="22 4 12 14.01 9 11.01"/>
     </svg>
   ),
+  planner: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+      <path d="M4.9 4.9l2.2 2.2M16.9 16.9l2.2 2.2M19.1 4.9l-2.2 2.2M7.1 16.9l-2.2 2.2"/>
+    </svg>
+  ),
   hardware: (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/>
@@ -86,7 +93,8 @@ const NAV_GROUPS = [
   {
     label: 'Operations',
     views: [
-      { id: 'dashboard',   label: 'Dashboard'   },
+      { id: 'dashboard',   label: 'Dashboard'    },
+      { id: 'planner',     label: 'Mission Plan' },
       { id: 'mission',     label: 'Mission Ctrl' },
       { id: '3d',          label: '3D Attitude'  },
     ],
