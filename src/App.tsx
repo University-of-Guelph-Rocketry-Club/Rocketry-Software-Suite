@@ -99,30 +99,40 @@ function StatPill({
     <div style={{
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
-      padding: '6px 14px',
+      padding: '8px 16px 7px',
       borderRight: '1px solid var(--border)',
-      minWidth: size === 'large' ? 100 : 72,
+      background: 'linear-gradient(180deg, rgba(56,189,248,0.05), rgba(2,8,16,0))',
+      minWidth: size === 'large' ? 116 : 96,
       flexShrink: 0,
     }}>
       <div style={{
         fontFamily: 'var(--mono)',
-        fontSize: size === 'large' ? 22 : 18,
+        fontSize: size === 'large' ? 26 : 22,
         fontWeight: 700,
         color: valColor,
-        textShadow: color ? `0 0 12px ${color}` : 'none',
+        textShadow: color ? `0 0 10px ${color}` : 'none',
         lineHeight: 1,
         letterSpacing: '0.02em',
       }}>
         {value}{unit && (
-          <span style={{ fontSize: size === 'large' ? 11 : 10, fontWeight: 400, color: 'var(--text-muted)', marginLeft: 2 }}>
+          <span style={{
+            fontSize: size === 'large' ? 12 : 11,
+            fontWeight: 500,
+            color: 'rgba(204,216,232,0.72)',
+            marginLeft: 4,
+          }}>
             {unit}
           </span>
         )}
       </div>
       <div style={{
-        fontFamily: 'var(--mono)', fontSize: 8, fontWeight: 600,
-        letterSpacing: '0.12em', textTransform: 'uppercase',
-        color: 'var(--text-dim)', marginTop: 3,
+        fontFamily: 'var(--mono)',
+        fontSize: 9,
+        fontWeight: 700,
+        letterSpacing: '0.14em',
+        textTransform: 'uppercase',
+        color: 'rgba(204,216,232,0.62)',
+        marginTop: 5,
       }}>
         {label}
       </div>
@@ -188,22 +198,24 @@ function InstrumentBar() {
     <div style={{
       display: 'flex',
       alignItems: 'stretch',
-      height: 60,
+      height: 72,
       background: 'var(--surface)',
       border: '1px solid var(--border)',
       borderRadius: 8,
-      overflow: 'hidden',
+      overflowX: 'auto',
+      overflowY: 'hidden',
       flexShrink: 0,
+      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
     }}>
       {/* FSM State — leftmost branded cell */}
       <div style={{
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
-        padding: '0 16px',
+        padding: '0 18px',
         borderRight: '1px solid var(--border)',
-        background: 'rgba(56,189,248,0.03)',
+        background: 'linear-gradient(180deg, rgba(56,189,248,0.10), rgba(56,189,248,0.03))',
         gap: 3,
-        minWidth: 96,
+        minWidth: 124,
         flexShrink: 0,
       }}>
         <div style={{
@@ -219,8 +231,9 @@ function InstrumentBar() {
           }} />
         </div>
         <div style={{
-          fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 700,
+          fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 700,
           color: stateColor, letterSpacing: '0.08em',
+          textAlign: 'center',
         }}>
           {stateStr}
         </div>
@@ -287,11 +300,13 @@ function InstrumentBar() {
       {/* G-Force gauge embedded right in the bar */}
       <div style={{
         display: 'flex', alignItems: 'center',
-        padding: '0 10px',
+        padding: '0 12px',
         borderLeft: '1px solid var(--border)',
         gap: 2,
         overflow: 'hidden',
-        maxHeight: 60,
+        maxHeight: 72,
+        minWidth: 86,
+        background: 'linear-gradient(180deg, rgba(167,139,250,0.08), rgba(2,8,16,0))',
       }}>
         {/* Inline mini gauge — just the SVG arc portion at tiny scale */}
         <MiniGForge />
