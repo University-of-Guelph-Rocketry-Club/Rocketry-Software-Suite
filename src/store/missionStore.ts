@@ -11,6 +11,9 @@ interface MissionStore {
   // Actions
   initChecklist: (schema: GroundStationSchema) => void
   setItemChecked: (id: string, checked: boolean) => void
+  setItemBypassed: (id: string, bypassed: boolean, reason?: string) => void
+  bypassAllPendingRequired: (reason?: string) => void
+  clearAllBypasses: () => void
   autoUpdateChecklist: (latest: Record<string, number | string | boolean | undefined>) => void
   setPhase: (phase: MissionPhase) => void
   startMission: () => void
@@ -47,6 +50,9 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       label: item.label,
       required: item.required,
       checked: false,
+      bypassed: false,
+      bypassReason: undefined,
+      bypassedAt: undefined,
       autoValue: undefined,
       passCriteria: item.passCriteria,
     }))
@@ -56,8 +62,59 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
   setItemChecked: (id, checked) => {
     set(s => ({
       checklist: s.checklist.map(item =>
-        item.id === id ? { ...item, checked } : item
+        item.id === id
+          ? {
+              ...item,
+              checked,
+              bypassed: checked ? false : item.bypassed,
+              bypassReason: checked ? undefined : item.bypassReason,
+              bypassedAt: checked ? undefined : item.bypassedAt,
+            }
+          : item
       ),
+    }))
+  },
+
+  setItemBypassed: (id, bypassed, reason) => {
+    const normalizedReason = reason?.trim() || 'Manual override'
+    set(s => ({
+      checklist: s.checklist.map(item =>
+        item.id === id
+          ? {
+              ...item,
+              bypassed,
+              bypassReason: bypassed ? normalizedReason : undefined,
+              bypassedAt: bypassed ? Date.now() : undefined,
+            }
+          : item
+      ),
+    }))
+  },
+
+  bypassAllPendingRequired: (reason) => {
+    const normalizedReason = reason?.trim() || 'Bulk pending bypass'
+    set(s => ({
+      checklist: s.checklist.map(item =>
+        item.required && !item.checked
+          ? {
+              ...item,
+              bypassed: true,
+              bypassReason: item.bypassed ? item.bypassReason : normalizedReason,
+              bypassedAt: item.bypassed ? item.bypassedAt : Date.now(),
+            }
+          : item
+      ),
+    }))
+  },
+
+  clearAllBypasses: () => {
+    set(s => ({
+      checklist: s.checklist.map(item => ({
+        ...item,
+        bypassed: false,
+        bypassReason: undefined,
+        bypassedAt: undefined,
+      })),
     }))
   },
 
@@ -66,18 +123,28 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
       checklist: s.checklist.map(item => {
         if (!item.passCriteria) return item
         const passed = safeCriteriaEval(item.passCriteria, latest)
-        return { ...item, checked: passed, autoValue: passed ? '✓ Auto' : 'Pending' }
+        return {
+          ...item,
+          checked: passed,
+          bypassed: passed ? false : item.bypassed,
+          bypassReason: passed ? undefined : item.bypassReason,
+          bypassedAt: passed ? undefined : item.bypassedAt,
+          autoValue: passed ? '✓ Auto' : 'Pending',
+        }
       }),
     }))
   },
 
   setPhase: (phase) => set({ phase }),
 
-  startMission: () => set({
-    phase: 'in-flight',
-    launchTime: Date.now(),
-    missionElapsedMs: 0,
-  }),
+  startMission: () => {
+    if (!get().isReadyToLaunch()) return
+    set({
+      phase: 'in-flight',
+      launchTime: Date.now(),
+      missionElapsedMs: 0,
+    })
+  },
 
   endMission: () => set({ phase: 'recovery' }),
 
@@ -85,6 +152,6 @@ export const useMissionStore = create<MissionStore>((set, get) => ({
     const { checklist } = get()
     return checklist
       .filter(item => item.required)
-      .every(item => item.checked)
+      .every(item => item.checked || item.bypassed)
   },
 }))

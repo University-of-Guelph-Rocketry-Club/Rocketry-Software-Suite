@@ -13,7 +13,7 @@ const isTauri =
  */
 export function useHardwareEvents() {
   const ingestPacket = useTelemetryStore((s) => s.ingestPacket)
-  const { setStatus, addRawPacket, setLastError, disconnect } = useHardwareStore.getState()
+  const { setStatus, addRawPacket, setLastError } = useHardwareStore.getState()
 
   useEffect(() => {
     if (!isTauri) return
@@ -26,6 +26,7 @@ export function useHardwareEvents() {
       unlisten.push(
         await listen<TelemetryPacket>('telemetry:packet', (ev) => {
           ingestPacket(ev.payload)
+          useHardwareStore.getState().refineHardwareFingerprint(ev.payload)
         }),
       )
 
@@ -35,7 +36,7 @@ export function useHardwareEvents() {
           setStatus(msg)
           // Reflect disconnection in store
           if (msg.startsWith('Disconnected') || msg.startsWith('Closed')) {
-            useHardwareStore.setState({ connected: false })
+            useHardwareStore.setState({ connected: false, hardwareFingerprint: null })
           }
         }),
       )

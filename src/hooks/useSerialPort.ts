@@ -1,6 +1,11 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { useTelemetryStore } from '../store/telemetryStore'
 import type { TelemetryPacket } from '../types/telemetry'
+import {
+  identifyByUsb,
+  refineWithTelemetry,
+  type HardwareFingerprint,
+} from '../utils/hardwareFingerprint'
 
 // ── Web Serial API types ───────────────────────────────────────
 interface SerialPort {
@@ -163,6 +168,7 @@ export function useSerialPort(sourceId = 'rocket') {
   const [packetCount, setPacketCount] = useState(0)
   const [lastPktTs, setLastPktTs]    = useState<number | null>(null)
   const [errorMsg, setErrorMsg]      = useState<string | null>(null)
+  const [hardwareFingerprint, setHardwareFingerprint] = useState<HardwareFingerprint | null>(null)
 
   const portRef    = useRef<SerialPort | null>(null)
   const readerRef  = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null)
@@ -210,6 +216,7 @@ export function useSerialPort(sourceId = 'rocket') {
                 ingestPacket(packet)
                 setPacketCount(c => c + 1)
                 setLastPktTs(Date.now())
+                setHardwareFingerprint(prev => refineWithTelemetry(packet, prev))
               }
             }
           }
@@ -242,6 +249,8 @@ export function useSerialPort(sourceId = 'rocket') {
 
       portRef.current = port
       const info = port.getInfo()
+      const usbFingerprint = identifyByUsb(info.usbVendorId, info.usbProductId)
+      setHardwareFingerprint(usbFingerprint)
       setPortInfo(info.usbVendorId
         ? `VID:${info.usbVendorId?.toString(16).toUpperCase()} PID:${info.usbProductId?.toString(16).toUpperCase()}`
         : 'Serial Device'
@@ -271,6 +280,7 @@ export function useSerialPort(sourceId = 'rocket') {
     setStatus('disconnected')
     setConnected(sourceId, false)
     setPortInfo(null)
+    setHardwareFingerprint(null)
   }, [sourceId, setConnected])
 
   const clearLog = useCallback(() => setRawLog([]), [])
@@ -287,6 +297,7 @@ export function useSerialPort(sourceId = 'rocket') {
   return {
     status, baudRate, setBaudRate, portInfo,
     rawLog, packetCount, lastPktTs,
+    hardwareFingerprint,
     errorMsg, connect, disconnect, clearLog,
   }
 }

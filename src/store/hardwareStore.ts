@@ -1,5 +1,11 @@
 import { create } from 'zustand'
 import type { ProtocolSchema, SerialPortInfo } from '../types/protocol'
+import {
+  identifyByUsb,
+  refineWithTelemetry,
+  type HardwareFingerprint,
+} from '../utils/hardwareFingerprint'
+import type { TelemetryPacket } from '../types/telemetry'
 
 const RAW_LOG_LIMIT = 100
 const isTauri =
@@ -24,6 +30,7 @@ interface HardwareStore {
   lastError: string | null
   // Diagnostics
   packetsDecoded: number
+  hardwareFingerprint: HardwareFingerprint | null
   // Raw frame log (last RAW_LOG_LIMIT frames)
   rawLog: RawPacketEntry[]
 
@@ -34,6 +41,7 @@ interface HardwareStore {
   setStatus: (msg: string) => void
   setLastError: (msg: string | null) => void
   addRawPacket: (hex: string) => void
+  refineHardwareFingerprint: (packet: TelemetryPacket) => void
   incrementDecoded: () => void
 }
 
@@ -46,6 +54,7 @@ export const useHardwareStore = create<HardwareStore>((set, get) => ({
   status: 'Not connected',
   lastError: null,
   packetsDecoded: 0,
+  hardwareFingerprint: null,
   rawLog: [],
 
   fetchPorts: async () => {
@@ -67,6 +76,11 @@ export const useHardwareStore = create<HardwareStore>((set, get) => ({
       set({ lastError: 'Serial requires the Tauri desktop app' })
       return
     }
+    const selectedPortMeta = get().ports.find(p => p.name === port)
+    const initialFingerprint = identifyByUsb(
+      selectedPortMeta?.usbVendorId,
+      selectedPortMeta?.usbProductId,
+    )
     set({ portName: port, baudRate: baud, protocol })
     try {
       const { invoke } = await import('@tauri-apps/api/core')
@@ -75,9 +89,9 @@ export const useHardwareStore = create<HardwareStore>((set, get) => ({
         baud,
         protocolJson: JSON.stringify(protocol),
       })
-      set({ connected: true, lastError: null })
+      set({ connected: true, lastError: null, hardwareFingerprint: initialFingerprint })
     } catch (e) {
-      set({ connected: false, lastError: String(e) })
+      set({ connected: false, lastError: String(e), hardwareFingerprint: null })
     }
   },
 
@@ -87,7 +101,7 @@ export const useHardwareStore = create<HardwareStore>((set, get) => ({
       const { invoke } = await import('@tauri-apps/api/core')
       await invoke('close_serial_port')
     } catch (_) { /* ignore */ } finally {
-      set({ connected: false, status: 'Disconnected' })
+      set({ connected: false, status: 'Disconnected', hardwareFingerprint: null })
     }
   },
 
@@ -101,6 +115,11 @@ export const useHardwareStore = create<HardwareStore>((set, get) => ({
         ...s.rawLog,
       ].slice(0, RAW_LOG_LIMIT),
       packetsDecoded: s.packetsDecoded + 1,
+    })),
+
+  refineHardwareFingerprint: (packet) =>
+    set((s) => ({
+      hardwareFingerprint: refineWithTelemetry(packet, s.hardwareFingerprint),
     })),
 
   incrementDecoded: () =>

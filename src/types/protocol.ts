@@ -45,4 +45,8 @@ export interface ProtocolSchema {
 export interface SerialPortInfo {
   name: string
   type: string
+  usbVendorId?: number
+  usbProductId?: number
+  manufacturer?: string
+  serialNumber?: string
 }

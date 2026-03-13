@@ -13,6 +13,7 @@ export function TMinus({ scheduledT0 }: TMinusProps) {
   const launchTime  = useMissionStore(s => s.launchTime)
   const phase       = useMissionStore(s => s.phase)
   const startMission = useMissionStore(s => s.startMission)
+  const canLaunch = useMissionStore(s => s.isReadyToLaunch())
 
   // Editable T0
   const [customT0, setCustomT0]   = useState<number | null>(null)
@@ -138,7 +139,14 @@ export function TMinus({ scheduledT0 }: TMinusProps) {
               {t0 && (
                 <button onClick={() => setCustomT0(null)} style={btnStyle('#3e546a')}>CLR</button>
               )}
-              <button onClick={startMission} style={btnStyle('#a8ff3e')}>▶ LAUNCH</button>
+              <button
+                onClick={startMission}
+                disabled={!canLaunch}
+                title={canLaunch ? 'Launch mission' : 'Resolve or bypass required checklist items first'}
+                style={btnStyle('#a8ff3e', !canLaunch)}
+              >
+                ▶ LAUNCH
+              </button>
             </>
           )}
         </div>
@@ -147,12 +155,13 @@ export function TMinus({ scheduledT0 }: TMinusProps) {
   )
 }
 
-function btnStyle(color: string): React.CSSProperties {
+function btnStyle(color: string, disabled = false): React.CSSProperties {
   return {
     padding: '2px 9px', borderRadius: 3, fontSize: 9,
     border: `1px solid ${color}44`,
-    background: `${color}10`,
-    color, cursor: 'pointer',
+    background: disabled ? 'var(--surface-raised)' : `${color}10`,
+    color: disabled ? 'var(--text-dim)' : color,
+    cursor: disabled ? 'not-allowed' : 'pointer',
     fontFamily: 'var(--mono)', fontWeight: 700, letterSpacing: '0.08em',
   }
 }

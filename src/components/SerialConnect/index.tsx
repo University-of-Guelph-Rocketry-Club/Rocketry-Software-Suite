@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from 'react'
 import { useSerialPort, WEB_SERIAL_SUPPORTED, BAUD_RATES } from '../../hooks/useSerialPort'
 import { useTelemetryStore } from '../../store/telemetryStore'
 import type { RawLogLine } from '../../hooks/useSerialPort'
+import type { HardwareFingerprint } from '../../utils/hardwareFingerprint'
 
 const PRIMARY_SOURCE_ID = 'rocket'
 
@@ -191,6 +192,44 @@ function StatRow({ label, value, color }: { label: string; value: string; color?
   )
 }
 
+function HardwareBadge({ fingerprint }: { fingerprint: HardwareFingerprint | null }) {
+  if (!fingerprint) return null
+  const color = fingerprint.confidence === 'high'
+    ? 'var(--lime)'
+    : fingerprint.confidence === 'medium'
+      ? 'var(--amber)'
+      : 'var(--magenta)'
+
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 2,
+      padding: '4px 8px',
+      borderRadius: 4,
+      border: `1px solid ${color}66`,
+      background: `${color}12`,
+    }} title={fingerprint.reason}>
+      <span style={{
+        fontFamily: 'var(--mono)',
+        fontSize: 9,
+        fontWeight: 700,
+        color,
+        letterSpacing: '0.08em',
+      }}>
+        HW: {fingerprint.label}
+      </span>
+      <span style={{
+        fontFamily: 'var(--mono)',
+        fontSize: 8,
+        color: 'var(--text-muted)',
+      }}>
+        confidence: {fingerprint.confidence.toUpperCase()}
+      </span>
+    </div>
+  )
+}
+
 // ── Live telemetry summary cards ───────────────────────────────
 function LiveSummary({ sourceId }: { sourceId: string }) {
   const latest = useTelemetryStore(s => s.sources[sourceId]?.latest)
@@ -237,6 +276,7 @@ export function SerialConnect() {
   const {
     status, baudRate, setBaudRate, portInfo,
     rawLog, packetCount, lastPktTs,
+    hardwareFingerprint,
     errorMsg, connect, disconnect, clearLog,
   } = useSerialPort(PRIMARY_SOURCE_ID)
 
@@ -306,6 +346,7 @@ export function SerialConnect() {
           <>
             <HeartbeatLed lastPktTs={lastPktTs} />
             <RssiMeter sourceId={PRIMARY_SOURCE_ID} />
+            <HardwareBadge fingerprint={hardwareFingerprint} />
           </>
         )}
 

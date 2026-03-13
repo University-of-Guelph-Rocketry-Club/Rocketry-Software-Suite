@@ -99,6 +99,9 @@ export interface ChecklistItem {
   label: string
   required: boolean
   checked: boolean
+  bypassed?: boolean
+  bypassReason?: string
+  bypassedAt?: number
   autoValue?: string   // If set, auto-populated from telemetry field
   passCriteria?: string
 }

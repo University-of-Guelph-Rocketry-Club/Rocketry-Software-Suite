@@ -290,20 +290,20 @@ fn decode_binary(frame: &[u8], protocol: &Protocol) -> Option<serde_json::Value>
             FieldType::Uint8 => *frame.get(off)? as f64,
             FieldType::Uint16 => {
                 let b: [u8; 2] = frame.get(off..off + 2)?.try_into().ok()?;
-                if le { u16::from_le_bytes(b) } else { u16::from_be_bytes(b) } as f64
+                (if le { u16::from_le_bytes(b) } else { u16::from_be_bytes(b) }) as f64
             }
             FieldType::Uint32 => {
                 let b: [u8; 4] = frame.get(off..off + 4)?.try_into().ok()?;
-                if le { u32::from_le_bytes(b) } else { u32::from_be_bytes(b) } as f64
+                (if le { u32::from_le_bytes(b) } else { u32::from_be_bytes(b) }) as f64
             }
             FieldType::Int8 => *frame.get(off)? as i8 as f64,
             FieldType::Int16 => {
                 let b: [u8; 2] = frame.get(off..off + 2)?.try_into().ok()?;
-                if le { i16::from_le_bytes(b) } else { i16::from_be_bytes(b) } as f64
+                (if le { i16::from_le_bytes(b) } else { i16::from_be_bytes(b) }) as f64
             }
             FieldType::Int32 => {
                 let b: [u8; 4] = frame.get(off..off + 4)?.try_into().ok()?;
-                if le { i32::from_le_bytes(b) } else { i32::from_be_bytes(b) } as f64
+                (if le { i32::from_le_bytes(b) } else { i32::from_be_bytes(b) }) as f64
             }
             FieldType::Float32 => {
                 let b: [u8; 4] = frame.get(off..off + 4)?.try_into().ok()?;

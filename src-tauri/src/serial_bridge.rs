@@ -4,6 +4,7 @@ use std::sync::{
 };
 use std::time::Duration;
 use tauri::AppHandle;
+use tauri::Emitter;
 
 use crate::protocol::{decode_packet, extract_frame, Protocol};
 
@@ -34,9 +35,23 @@ pub fn list_serial_ports() -> Vec<serde_json::Value> {
         .unwrap_or_default()
         .iter()
         .map(|p| {
+            let (usb_vendor_id, usb_product_id, manufacturer, serial_number) = match &p.port_type {
+                serialport::SerialPortType::UsbPort(info) => (
+                    Some(info.vid),
+                    Some(info.pid),
+                    info.manufacturer.clone(),
+                    info.serial_number.clone(),
+                ),
+                _ => (None, None, None, None),
+            };
+
             serde_json::json!({
                 "name": p.port_name,
                 "type": format!("{:?}", p.port_type),
+                "usbVendorId": usb_vendor_id,
+                "usbProductId": usb_product_id,
+                "manufacturer": manufacturer,
+                "serialNumber": serial_number,
             })
         })
         .collect()

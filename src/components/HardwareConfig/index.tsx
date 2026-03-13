@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useHardwareStore } from '../../store/hardwareStore'
 import type { ProtocolSchema } from '../../types/protocol'
+import type { HardwareFingerprint } from '../../utils/hardwareFingerprint'
 import { useRocketDesignStore } from '../../store/rocketDesignStore'
 import { parseOpenRocketFile } from '../../utils/openRocket'
 import RawInspector from './RawInspector'
@@ -79,6 +80,7 @@ export default function HardwareConfig() {
   const {
     ports, connected, portName, baudRate, status, lastError,
     packetsDecoded, rawLog,
+    hardwareFingerprint,
     fetchPorts, connect, disconnect, protocol: activeProtocol,
   } = useHardwareStore()
 
@@ -157,6 +159,7 @@ export default function HardwareConfig() {
           </div>
           <div className="flex items-center gap-3 text-xs text-gray-400">
             <span>Packets decoded: <span className="text-white font-mono">{packetsDecoded}</span></span>
+            <HardwareFingerprintPill fingerprint={hardwareFingerprint} />
             {!isTauri && (
               <span className="bg-yellow-900 text-yellow-300 px-2 py-0.5 rounded">
                 ⚠ Tauri not detected — serial unavailable
@@ -275,6 +278,21 @@ export default function HardwareConfig() {
   )
 }
 
+function HardwareFingerprintPill({ fingerprint }: { fingerprint: HardwareFingerprint | null }) {
+  if (!fingerprint) return null
+  const tone = fingerprint.confidence === 'high'
+    ? 'text-green-300 border-green-700 bg-green-900/40'
+    : fingerprint.confidence === 'medium'
+      ? 'text-yellow-300 border-yellow-700 bg-yellow-900/40'
+      : 'text-red-300 border-red-700 bg-red-900/40'
+
+  return (
+    <span className={`px-2 py-0.5 rounded border ${tone}`} title={fingerprint.reason}>
+      HW: {fingerprint.label} ({fingerprint.confidence.toUpperCase()})
+    </span>
+  )
+}
+
 // ── Connection tab ────────────────────────────────────────────────────────────
 
 interface ConnTabProps {
@@ -322,7 +340,12 @@ function ConnectionTab(props: ConnTabProps) {
             <option value="">— select port —</option>
             {ports.map((p) => (
               <option key={p.name} value={p.name}>
-                {p.name}  {p.type !== 'Unknown' ? `(${p.type})` : ''}
+                {p.name}
+                {p.usbVendorId !== undefined && p.usbProductId !== undefined
+                  ? ` (VID:${p.usbVendorId.toString(16).toUpperCase()} PID:${p.usbProductId.toString(16).toUpperCase()})`
+                  : p.type !== 'Unknown'
+                    ? ` (${p.type})`
+                    : ''}
               </option>
             ))}
           </select>

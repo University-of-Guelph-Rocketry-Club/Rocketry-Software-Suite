@@ -6,9 +6,20 @@ import type { ChecklistItem } from '../../types/telemetry'
 const CATEGORY_ORDER = ['Navigation', 'Power', 'Sensors', 'Comms', 'Recovery', 'Range', 'Weather', 'Safety', 'Data']
 
 function CategorySection({ category, items }: { category: string; items: ChecklistItem[] }) {
-  const { setItemChecked } = useMissionStore.getState()
+  const setItemChecked = useMissionStore(s => s.setItemChecked)
+  const setItemBypassed = useMissionStore(s => s.setItemBypassed)
   const allRequired = items.filter(i => i.required)
-  const allChecked = allRequired.every(i => i.checked)
+  const allChecked = allRequired.every(i => i.checked || i.bypassed)
+
+  const handleBypassToggle = (item: ChecklistItem) => {
+    if (item.bypassed) {
+      setItemBypassed(item.id, false)
+      return
+    }
+    const response = window.prompt('Enter bypass reason for this item:', item.bypassReason ?? 'Calibration tolerance accepted')
+    if (response === null) return
+    setItemBypassed(item.id, true, response)
+  }
 
   return (
     <div style={{
@@ -26,7 +37,7 @@ function CategorySection({ category, items }: { category: string; items: Checkli
         <span style={{ fontSize: 16 }}>{allChecked ? '✅' : '📋'}</span>
         <span style={{ fontWeight: 600, fontSize: 13 }}>{category}</span>
         <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>
-          {items.filter(i => i.checked).length}/{items.length}
+          {items.filter(i => i.checked || i.bypassed).length}/{items.length}
         </span>
       </div>
 
@@ -37,7 +48,7 @@ function CategorySection({ category, items }: { category: string; items: Checkli
             display: 'flex', alignItems: 'flex-start', gap: 12,
             padding: '10px 16px',
             borderBottom: '1px solid rgba(255,255,255,0.04)',
-            opacity: item.checked ? 0.7 : 1,
+            opacity: item.checked || item.bypassed ? 0.7 : 1,
           }}
         >
           <input
@@ -49,12 +60,15 @@ function CategorySection({ category, items }: { category: string; items: Checkli
           <div style={{ flex: 1 }}>
             <div style={{
               fontSize: 13,
-              color: item.checked ? '#44ff88' : 'var(--text)',
-              textDecoration: item.checked ? 'line-through' : 'none',
+              color: item.checked ? '#44ff88' : item.bypassed ? '#ffb347' : 'var(--text)',
+              textDecoration: item.checked || item.bypassed ? 'line-through' : 'none',
             }}>
               {item.label}
-              {item.required && !item.checked && (
+              {item.required && !item.checked && !item.bypassed && (
                 <span style={{ color: '#ff4444', marginLeft: 6, fontSize: 10 }}>REQUIRED</span>
+              )}
+              {item.bypassed && (
+                <span style={{ color: '#ffb347', marginLeft: 6, fontSize: 10 }}>BYPASSED</span>
               )}
             </div>
             {item.autoValue && (
@@ -65,6 +79,33 @@ function CategorySection({ category, items }: { category: string; items: Checkli
             {item.passCriteria && (
               <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>
                 Criteria: <code style={{ color: 'var(--text-muted)' }}>{item.passCriteria}</code>
+              </div>
+            )}
+            {item.required && !item.checked && (
+              <button
+                onClick={() => handleBypassToggle(item)}
+                style={{
+                  marginTop: 6,
+                  padding: '3px 8px',
+                  borderRadius: 4,
+                  border: `1px solid ${item.bypassed ? '#ffb347' : 'var(--border)'}`,
+                  background: item.bypassed ? 'rgba(255,179,71,0.15)' : 'var(--surface-raised)',
+                  color: item.bypassed ? '#ffb347' : 'var(--text-muted)',
+                  fontSize: 10,
+                  cursor: 'pointer',
+                }}
+              >
+                {item.bypassed ? 'Undo Bypass' : 'Bypass Item'}
+              </button>
+            )}
+            {item.bypassed && (
+              <div style={{ fontSize: 10, color: '#ffb347', marginTop: 4 }}>
+                Reason: {item.bypassReason ?? 'Manual override'}
+                {item.bypassedAt && (
+                  <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>
+                    ({new Date(item.bypassedAt).toLocaleTimeString()})
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -81,7 +122,15 @@ export function PreFlightChecklist() {
   const sources = useTelemetryStore(s => s.sources)
   const initChecklist = useMissionStore(s => s.initChecklist)
   const autoUpdate = useMissionStore(s => s.autoUpdateChecklist)
-  const isReady = checklist.filter(i => i.required).every(i => i.checked)
+  const bypassAllPendingRequired = useMissionStore(s => s.bypassAllPendingRequired)
+  const clearAllBypasses = useMissionStore(s => s.clearAllBypasses)
+  const isReady = checklist.filter(i => i.required).every(i => i.checked || i.bypassed)
+
+  const handleBulkBypass = () => {
+    const response = window.prompt('Reason for bypassing all pending required items:', 'Range simulation mode')
+    if (response === null) return
+    bypassAllPendingRequired(response)
+  }
 
   // Group checklist by category
   const grouped = useMemo(() => CATEGORY_ORDER.reduce<Record<string, ChecklistItem[]>>((acc, cat) => {
@@ -102,7 +151,8 @@ export function PreFlightChecklist() {
   }, [autoUpdate, mainLatest])
 
   const requiredItems = checklist.filter(i => i.required)
-  const checkedRequired = requiredItems.filter(i => i.checked)
+  const resolvedRequired = requiredItems.filter(i => i.checked || i.bypassed)
+  const bypassedRequired = requiredItems.filter(i => i.bypassed).length
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -119,17 +169,21 @@ export function PreFlightChecklist() {
         {/* Progress */}
         <div style={{ marginBottom: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
-            <span>Required items: {checkedRequired.length}/{requiredItems.length}</span>
+            <span>Required items: {resolvedRequired.length}/{requiredItems.length}</span>
             <span>{isReady ? '✅ Ready to launch' : '⏳ Pending items'}</span>
           </div>
           <div style={{ height: 6, background: 'var(--surface-raised)', borderRadius: 3, overflow: 'hidden' }}>
             <div style={{
               height: '100%',
-              width: `${requiredItems.length > 0 ? (checkedRequired.length / requiredItems.length) * 100 : 0}%`,
+              width: `${requiredItems.length > 0 ? (resolvedRequired.length / requiredItems.length) * 100 : 0}%`,
               background: isReady ? '#44ff88' : 'var(--accent)',
               transition: 'width 0.3s',
             }} />
           </div>
+        </div>
+
+        <div style={{ fontSize: 11, color: '#ffb347', marginBottom: 10 }}>
+          Active bypasses: {bypassedRequired}
         </div>
 
         <div style={{ display: 'flex', gap: 10 }}>
@@ -142,6 +196,26 @@ export function PreFlightChecklist() {
             }}
           >
             🔄 Reset
+          </button>
+          <button
+            onClick={handleBulkBypass}
+            style={{
+              padding: '5px 14px', borderRadius: 4, fontSize: 12,
+              background: 'rgba(255,179,71,0.15)', border: '1px solid rgba(255,179,71,0.45)',
+              color: '#ffb347', cursor: 'pointer',
+            }}
+          >
+            ⏭ Bypass Pending
+          </button>
+          <button
+            onClick={clearAllBypasses}
+            style={{
+              padding: '5px 14px', borderRadius: 4, fontSize: 12,
+              background: 'var(--surface-raised)', border: '1px solid var(--border)',
+              color: 'var(--text-muted)', cursor: 'pointer',
+            }}
+          >
+            Clear Bypasses
           </button>
           <button
             onClick={startMission}
