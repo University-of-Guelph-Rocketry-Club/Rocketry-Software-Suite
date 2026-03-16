@@ -10,6 +10,46 @@ import ProtocolTester from './ProtocolTester'
 // ── Built-in protocol presets ─────────────────────────────────────────────────
 
 const BUILT_IN_PROTOCOLS: Record<string, ProtocolSchema> = {
+  'UoG Sensor Stack v2': {
+    name: 'UoG Sensor Stack v2',
+    description: 'Binary frame for IMU + Accelerometer + GPS + Barometer + Spectrometer',
+    type: 'binary',
+    endian: 'little',
+    frameSize: 88,
+    syncBytes: [0xAA, 0x55],
+    checksumType: 'crc16',
+    checksumOffset: 86,
+    sourceId: 'rocket',
+    fields: [
+      { name: '_sync1',          type: 'uint8',   offset: 0 },
+      { name: '_sync2',          type: 'uint8',   offset: 1 },
+      { name: 'seq',             type: 'uint16',  offset: 2 },
+      { name: 'ts',              type: 'uint32',  offset: 4 },
+      { name: 'pitch',           type: 'float32', offset: 8 },
+      { name: 'yaw',             type: 'float32', offset: 12 },
+      { name: 'roll',            type: 'float32', offset: 16 },
+      { name: 'accelX',          type: 'float32', offset: 20 },
+      { name: 'accelY',          type: 'float32', offset: 24 },
+      { name: 'accelZ',          type: 'float32', offset: 28 },
+      { name: 'gyroX',           type: 'float32', offset: 32 },
+      { name: 'gyroY',           type: 'float32', offset: 36 },
+      { name: 'gyroZ',           type: 'float32', offset: 40 },
+      { name: 'latitude',        type: 'float32', offset: 44 },
+      { name: 'longitude',       type: 'float32', offset: 48 },
+      { name: 'altitude',        type: 'float32', offset: 52 },
+      { name: 'pressure',        type: 'float32', offset: 56 },
+      { name: 'temperature',     type: 'float32', offset: 60 },
+      { name: 'batteryVoltage',  type: 'float32', offset: 64 },
+      { name: 'rssi',            type: 'int16',   offset: 68 },
+      { name: 'gpsFix',          type: 'uint8',   offset: 70 },
+      { name: 'gpsSatellites',   type: 'uint8',   offset: 71 },
+      { name: 'spectrometer450', type: 'float32', offset: 72 },
+      { name: 'spectrometer550', type: 'float32', offset: 76 },
+      { name: 'spectrometer680', type: 'float32', offset: 80 },
+      { name: 'state',           type: 'uint8',   offset: 84 },
+      { name: '_reserved',       type: 'uint8',   offset: 85 },
+    ],
+  },
   'UoG Binary v1': {
     name: 'UoG Binary v1',
     description: 'Packed C struct — matches avionics_template.h',
@@ -54,6 +94,7 @@ const BUILT_IN_PROTOCOLS: Record<string, ProtocolSchema> = {
     sourceId: 'rocket',
     csvFields: ['ts', 'pitch', 'yaw', 'roll', 'accelX', 'accelY', 'accelZ',
                  'latitude', 'longitude', 'altitude', 'pressure',
+                 'spectrometer450', 'spectrometer550', 'spectrometer680',
                  'batteryVoltage', 'temperature'],
     fields: [],
   },
@@ -457,7 +498,7 @@ function ConnectionTab(props: ConnTabProps) {
           </p>
           <p>
             Point your FTDI / CP2102 USB-serial adapter to the correct port above, set the baud
-            rate to match your firmware, select <em>UoG Binary v1</em>, and connect.
+            rate to match your firmware, select <em>UoG Sensor Stack v2</em>, and connect.
           </p>
           <p>
             For a simpler start, use the <em>CSV (Arduino)</em> preset with{' '}

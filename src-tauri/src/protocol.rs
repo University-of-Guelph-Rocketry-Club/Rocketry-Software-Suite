@@ -260,7 +260,18 @@ pub fn decode_packet(
     map.entry("seq").or_insert_with(|| serde_json::json!(0u32));
 
     // Map state integer → string label
-    if let Some(state_val) = map.get("state").and_then(|v| v.as_u64()) {
+    if let Some(state_val) = map
+        .get("state")
+        .and_then(|v| v.as_u64().or_else(|| {
+            v.as_f64().and_then(|f| {
+                if f.is_finite() && f.fract() == 0.0 && f >= 0.0 {
+                    Some(f as u64)
+                } else {
+                    None
+                }
+            })
+        }))
+    {
         let label = match state_val {
             0 => "IDLE",
             1 => "PAD",

@@ -21,6 +21,7 @@ const SAFE_ZONES: Record<string, SafeZone[]> = {
     { y1:  0,   y2: 2000, color: 'rgba(56,189,248,0.04)', label: 'Operating ceiling' },
   ],
   environment: [],
+  spectrometer: [],
   system: [],
 }
 
@@ -29,6 +30,7 @@ const CHART_GROUPS = [
   { id: 'accel',       label: 'Acceleration (m/s²)', fields: ['accelX', 'accelY', 'accelZ'] },
   { id: 'altitude',    label: 'Altitude (m)',         fields: ['altitude', 'baroAltitude'] },
   { id: 'environment', label: 'Environment',          fields: ['temperature', 'pressure'] },
+  { id: 'spectrometer', label: 'Spectrometer',        fields: ['spectrometer450', 'spectrometer550', 'spectrometer680'] },
   { id: 'system',      label: 'System',               fields: ['batteryVoltage', 'rssi'] },
 ]
 

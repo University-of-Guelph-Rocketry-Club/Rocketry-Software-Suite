@@ -39,6 +39,11 @@ export interface TelemetryPacket {
   temperature?: number   // °C
   baroAltitude?: number  // meters
 
+  // --- Spectrometer channels (normalized intensity or calibrated units) ---
+  spectrometer450?: number
+  spectrometer550?: number
+  spectrometer680?: number
+
   // --- Velocities (m/s) ---
   velocityX?: number
   velocityY?: number
