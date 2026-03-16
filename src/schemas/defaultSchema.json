@@ -52,6 +52,7 @@
     { "id": "gps_fix",      "category": "Navigation", "label": "GPS Fix Acquired (≥ 6 satellites)", "required": true,  "autoField": "gpsFix",        "passCriteria": "gpsFix === true" },
     { "id": "battery",      "category": "Power",      "label": "Battery Voltage ≥ 3.7 V",           "required": true,  "autoField": "batteryVoltage", "passCriteria": "batteryVoltage >= 3.7" },
     { "id": "imu_cal",      "category": "Sensors",    "label": "IMU Calibrated (Gravity ≈ 9.8 m/s²)","required": true, "autoField": "accelZ",        "passCriteria": "Math.abs(accelZ - 9.81) < 0.3" },
+    { "id": "spec_link",    "category": "Sensors",    "label": "Spectrometer Link Active",               "required": true, "autoField": "spectrometer550", "passCriteria": "spectrometer550 > 0" },
     { "id": "comm",         "category": "Comms",      "label": "Communication Link Established",     "required": true,  "autoField": "rssi",          "passCriteria": "rssi > -100" },
     { "id": "recovery",     "category": "Recovery",   "label": "Recovery System Armed & Tested",     "required": true },
     { "id": "tower",        "category": "Range",      "label": "Launch Tower Clear",                 "required": true },

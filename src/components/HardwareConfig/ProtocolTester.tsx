@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import type { ProtocolSchema } from '../../types/protocol'
 import { hexToBytes, decodeFrame } from '../../utils/packetDecoder'
 
@@ -6,7 +6,7 @@ interface Props {
   protocol: ProtocolSchema | null
 }
 
-const EXAMPLE_HEX =
+const EXAMPLE_HEX_V1 =
   'AA 55 01 00 ' +   // sync1, sync2, seq=1
   'E8 03 00 00 ' +   // timestamp = 1000 ms
   '00 00 20 42 ' +   // pitch = 40.0°
@@ -29,10 +29,48 @@ const EXAMPLE_HEX =
   '02 00 ' +         // state=BOOST, _reserved
   '00 00'            // crc16 placeholder (will fail checksum — that's shown in warnings)
 
+const EXAMPLE_HEX_V2 =
+  'AA 55 01 00 ' +   // sync1, sync2, seq=1
+  'E8 03 00 00 ' +   // timestamp = 1000 ms
+  '00 00 20 42 ' +   // pitch = 40.0°
+  '00 00 00 00 ' +   // yaw = 0°
+  '00 00 00 00 ' +   // roll = 0°
+  '00 00 00 00 ' +   // accelX
+  '00 00 00 00 ' +   // accelY
+  '71 3D 1C 41 ' +   // accelZ = 9.81 m/s²
+  '00 00 00 00 ' +   // gyroX
+  '00 00 00 00 ' +   // gyroY
+  '00 00 00 00 ' +   // gyroZ
+  '52 B8 35 43 ' +   // latitude
+  '00 00 00 00 ' +   // longitude
+  '00 40 9C 44 ' +   // altitude = 1250 m
+  '00 00 7A 44 ' +   // pressure = 1000 hPa
+  'CD CC CC 41 ' +   // temperature = 25.6°C
+  '52 B8 8E 40 ' +   // batteryVoltage = 4.46 V
+  'B8 FF ' +         // rssi = -72 dBm
+  '01 08 ' +         // gpsFix=1, gpsSats=8
+  '00 00 C8 42 ' +   // spectrometer450 = 100.0
+  '00 00 48 43 ' +   // spectrometer550 = 200.0
+  '00 00 96 43 ' +   // spectrometer680 = 300.0
+  '02 00 ' +         // state=BOOST, _reserved
+  '00 00'            // crc16 placeholder (will fail checksum — that's shown in warnings)
+
+function getExampleHex(protocol: ProtocolSchema | null): string {
+  if (!protocol) return EXAMPLE_HEX_V2
+  if (protocol.name === 'UoG Sensor Stack v2' || protocol.frameSize === 88) return EXAMPLE_HEX_V2
+  return EXAMPLE_HEX_V1
+}
+
 export default function ProtocolTester({ protocol }: Props) {
-  const [hexInput, setHexInput] = useState(EXAMPLE_HEX)
+  const [hexInput, setHexInput] = useState(getExampleHex(protocol))
   const [result, setResult] = useState<ReturnType<typeof decodeFrame> | null>(null)
   const [parseErr, setParseErr] = useState<string | null>(null)
+
+  useEffect(() => {
+    setHexInput(getExampleHex(protocol))
+    setResult(null)
+    setParseErr(null)
+  }, [protocol?.name, protocol?.frameSize])
 
   function runDecode() {
     setParseErr(null)
@@ -96,12 +134,20 @@ export default function ProtocolTester({ protocol }: Props) {
         </p>
       </div>
 
-      <button
-        onClick={runDecode}
-        className="px-4 py-2 bg-sky-700 hover:bg-sky-600 text-white rounded text-sm font-medium"
-      >
-        Decode
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={runDecode}
+          className="px-4 py-2 bg-sky-700 hover:bg-sky-600 text-white rounded text-sm font-medium"
+        >
+          Decode
+        </button>
+        <button
+          onClick={() => setHexInput(getExampleHex(protocol))}
+          className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm font-medium"
+        >
+          Load Sample
+        </button>
+      </div>
 
       {/* Parse error */}
       {parseErr && (

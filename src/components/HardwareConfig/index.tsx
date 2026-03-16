@@ -41,7 +41,7 @@ const BUILT_IN_PROTOCOLS: Record<string, ProtocolSchema> = {
       { name: 'temperature',     type: 'float32', offset: 60 },
       { name: 'batteryVoltage',  type: 'float32', offset: 64 },
       { name: 'rssi',            type: 'int16',   offset: 68 },
-      { name: 'gpsFix',          type: 'uint8',   offset: 70 },
+      { name: 'gpsFix',          type: 'bool',    offset: 70 },
       { name: 'gpsSatellites',   type: 'uint8',   offset: 71 },
       { name: 'spectrometer450', type: 'float32', offset: 72 },
       { name: 'spectrometer550', type: 'float32', offset: 76 },
@@ -81,7 +81,7 @@ const BUILT_IN_PROTOCOLS: Record<string, ProtocolSchema> = {
       { name: 'temperature',  type: 'float32', offset: 60 },
       { name: 'batteryVoltage', type: 'float32', offset: 64 },
       { name: 'rssi',         type: 'int16',   offset: 68 },
-      { name: 'gpsFix',       type: 'uint8',   offset: 70 },
+      { name: 'gpsFix',       type: 'bool',    offset: 70 },
       { name: 'gpsSatellites', type: 'uint8',  offset: 71 },
       { name: 'state',        type: 'uint8',   offset: 72 },
     ],
@@ -128,7 +128,7 @@ export default function HardwareConfig() {
   const [activeTab, setActiveTab] = useState<Tab>('connect')
   const [selectedPort, setSelectedPort] = useState(portName || '')
   const [selectedBaud, setSelectedBaud] = useState(baudRate)
-  const [presetKey, setPresetKey] = useState<string>(Object.keys(BUILT_IN_PROTOCOLS)[0])
+  const [presetKey, setPresetKey] = useState<string>('UoG Sensor Stack v2')
   const [customJson, setCustomJson] = useState('')
   const [useCustom, setUseCustom] = useState(false)
   const [jsonError, setJsonError] = useState<string | null>(null)
@@ -492,9 +492,9 @@ function ConnectionTab(props: ConnTabProps) {
         </summary>
         <div className="mt-3 text-xs text-gray-400 space-y-2 border-l-2 border-gray-700 pl-3">
           <p>
-            Copy <code className="bg-gray-800 px-1 rounded">src/schemas/protocols/avionics_template.h</code> into
-            your firmware project. It defines <code className="bg-gray-800 px-1 rounded">TelemetryPacket_t</code> (76 bytes)
-            and the <code className="bg-gray-800 px-1 rounded">uog_send_packet()</code> helper for STM32 HAL and Arduino.
+            Copy <code className="bg-gray-800 px-1 rounded">src/schemas/protocols/avionics_template_v2.h</code> into
+            your firmware project. It defines <code className="bg-gray-800 px-1 rounded">TelemetryPacketV2_t</code> (88 bytes)
+            and the <code className="bg-gray-800 px-1 rounded">uog_send_packet_v2()</code> helper for STM32 HAL and Arduino.
           </p>
           <p>
             Point your FTDI / CP2102 USB-serial adapter to the correct port above, set the baud
@@ -503,6 +503,10 @@ function ConnectionTab(props: ConnTabProps) {
           <p>
             For a simpler start, use the <em>CSV (Arduino)</em> preset with{' '}
             <code className="bg-gray-800 px-1 rounded">Serial.println()</code> output.
+          </p>
+          <p>
+            Legacy packet support is still available via <em>UoG Binary v1</em> and{' '}
+            <code className="bg-gray-800 px-1 rounded">src/schemas/protocols/avionics_template.h</code>.
           </p>
         </div>
       </details>

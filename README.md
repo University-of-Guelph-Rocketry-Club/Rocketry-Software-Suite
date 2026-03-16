@@ -88,6 +88,20 @@ All mission parameters are defined in **`src/schemas/defaultSchema.json`**:
 
 You can load a different schema at runtime (feature-ready via Tauri file commands).
 
+## Hardware Protocol Presets
+
+For the full recommended avionics stack (IMU, spectrometer, barometer, GPS, accelerometer), use:
+
+- UI preset: `UoG Sensor Stack v2`
+- Firmware header: `src/schemas/protocols/avionics_template_v2.h`
+- Protocol JSON: `src/schemas/protocols/uog_sensor_stack_v2.json`
+
+Legacy compatibility remains available:
+
+- UI preset: `UoG Binary v1`
+- Firmware header: `src/schemas/protocols/avionics_template.h`
+- Protocol JSON: `src/schemas/protocols/uog_binary_v1.json`
+
 ---
 
 ## WebSocket Packet Format
